@@ -1,10 +1,12 @@
 #![allow(non_camel_case_types)]
 #![allow(clippy::excessive_precision)]
 #![allow(clippy::unusual_byte_groupings)]
+#![allow(dead_code)]
 
 mod cos;
 mod exp;
 mod log;
+mod sincos_tab;
 mod sin;
 mod trig;
 
@@ -12,6 +14,7 @@ pub use cos::cos;
 pub use exp::exp;
 pub use log::ln;
 pub use sin::sin;
+pub use trig::sincos;
 
 // ========= bit helpers =========
 
@@ -22,6 +25,29 @@ fn f64_from_bits(u: u64) -> f64 {
 #[inline(always)]
 fn f64_to_bits(x: f64) -> u64 {
     x.to_bits()
+}
+
+#[inline(always)]
+#[cfg(all(target_feature = "fma", target_arch = "x86_64"))]
+fn fma(a: f64, b: f64, c: f64) -> f64 {
+    use core::arch::x86_64::{_mm_cvtsd_f64, _mm_fmadd_sd, _mm_set_sd};
+    unsafe { _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(a), _mm_set_sd(b), _mm_set_sd(c))) }
+}
+
+#[inline(always)]
+#[cfg(all(target_feature = "fma", target_arch = "x86"))]
+fn fma(a: f64, b: f64, c: f64) -> f64 {
+    use core::arch::x86::{_mm_cvtsd_f64, _mm_fmadd_sd, _mm_set_sd};
+    unsafe { _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(a), _mm_set_sd(b), _mm_set_sd(c))) }
+}
+
+#[inline(always)]
+#[cfg(not(any(
+    all(target_feature = "fma", target_arch = "x86_64"),
+    all(target_feature = "fma", target_arch = "x86")
+)))]
+fn fma(a: f64, b: f64, c: f64) -> f64 {
+    a * b + c
 }
 
 #[inline(always)]

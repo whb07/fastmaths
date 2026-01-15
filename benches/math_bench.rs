@@ -4,6 +4,57 @@ use std::time::Duration;
 
 use std::sync::OnceLock;
 
+const RNG_A: u64 = 6364136223846793005;
+const RNG_C: u64 = 1442695040888963407;
+const RNG_DENOM: f64 = (1u64 << 53) as f64;
+
+fn lcg_next(state: &mut u64) -> u64 {
+    *state = state.wrapping_mul(RNG_A).wrapping_add(RNG_C);
+    *state
+}
+
+fn uniform_f64(state: &mut u64) -> f64 {
+    let bits = lcg_next(state) >> 11;
+    (bits as f64) / RNG_DENOM
+}
+
+fn gen_range(count: usize, min: f64, max: f64, seed: u64) -> Vec<f64> {
+    let mut state = seed;
+    let span = max - min;
+    let mut values = Vec::with_capacity(count);
+    for _ in 0..count {
+        values.push(min + uniform_f64(&mut state) * span);
+    }
+    values
+}
+
+fn bench_inputs<F, G>(c: &mut Criterion, name: &str, inputs: &[f64], fast: F, glibc: G)
+where
+    F: Fn(f64) -> f64 + Copy,
+    G: Fn(f64) -> f64 + Copy,
+{
+    let mut group = c.benchmark_group(name);
+    group.bench_function("fastlibm", |b| {
+        b.iter(|| {
+            let mut acc = 0.0;
+            for &x in inputs {
+                acc += fast(black_box(x));
+            }
+            black_box(acc)
+        })
+    });
+    group.bench_function("glibc", |b| {
+        b.iter(|| {
+            let mut acc = 0.0;
+            for &x in inputs {
+                acc += glibc(black_box(x));
+            }
+            black_box(acc)
+        })
+    });
+    group.finish();
+}
+
 struct LibmFns {
     exp: unsafe extern "C" fn(f64) -> f64,
     log: unsafe extern "C" fn(f64) -> f64,
@@ -11,7 +62,7 @@ struct LibmFns {
     cos: unsafe extern "C" fn(f64) -> f64,
 }
 
-static LIBM_FNS: OnceLock<Option<LibmFns>> = OnceLock::new();
+static LIBM_FNS: OnceLock<LibmFns> = OnceLock::new();
 
 fn libm_path() -> Option<String> {
     if let Ok(value) = std::env::var("FASTLIBM_GLIBC_LIBM") {
@@ -27,59 +78,55 @@ fn libm_path() -> Option<String> {
     None
 }
 
-fn load_libm() -> Option<LibmFns> {
-    let path = libm_path()?;
-    let lib = unsafe { libloading::Library::new(&path).ok()? };
+fn load_libm() -> LibmFns {
+    let path = libm_path().expect("glibc libm not found; set FASTLIBM_GLIBC_LIBM");
+    let lib = unsafe { libloading::Library::new(&path).expect("load glibc libm") };
     let lib = Box::leak(Box::new(lib));
     unsafe {
-        let exp: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> = lib.get(b"exp").ok()?;
-        let log: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> = lib.get(b"log").ok()?;
-        let sin: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> = lib.get(b"sin").ok()?;
-        let cos: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> = lib.get(b"cos").ok()?;
+        let exp: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"exp").expect("load exp");
+        let log: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"log").expect("load log");
+        let sin: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"sin").expect("load sin");
+        let cos: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"cos").expect("load cos");
         eprintln!("Using libm from {path}");
-        Some(LibmFns {
+        LibmFns {
             exp: *exp,
             log: *log,
             sin: *sin,
             cos: *cos,
-        })
+        }
     }
 }
 
-fn libm() -> Option<&'static LibmFns> {
-    LIBM_FNS.get_or_init(load_libm).as_ref()
+fn libm() -> &'static LibmFns {
+    LIBM_FNS.get_or_init(load_libm)
 }
 
+#[inline(never)]
 fn glibc_exp(x: f64) -> f64 {
-    if let Some(fns) = libm() {
-        unsafe { (fns.exp)(x) }
-    } else {
-        x.exp()
-    }
+    let fns = libm();
+    unsafe { (fns.exp)(x) }
 }
 
+#[inline(never)]
 fn glibc_log(x: f64) -> f64 {
-    if let Some(fns) = libm() {
-        unsafe { (fns.log)(x) }
-    } else {
-        x.ln()
-    }
+    let fns = libm();
+    unsafe { (fns.log)(x) }
 }
 
+#[inline(never)]
 fn glibc_sin(x: f64) -> f64 {
-    if let Some(fns) = libm() {
-        unsafe { (fns.sin)(x) }
-    } else {
-        x.sin()
-    }
+    let fns = libm();
+    unsafe { (fns.sin)(x) }
 }
 
+#[inline(never)]
 fn glibc_cos(x: f64) -> f64 {
-    if let Some(fns) = libm() {
-        unsafe { (fns.cos)(x) }
-    } else {
-        x.cos()
-    }
+    let fns = libm();
+    unsafe { (fns.cos)(x) }
 }
 
 fn bench_only() -> Option<String> {
@@ -119,7 +166,6 @@ fn bench_exp(c: &mut Criterion) {
         return;
     }
 
-    let mut group = c.benchmark_group("exp");
     let inputs = [
         -745.133_219_101_941_1,
         -100.0,
@@ -135,26 +181,7 @@ fn bench_exp(c: &mut Criterion) {
         100.0,
         700.0,
     ];
-
-    group.bench_function("fastlibm", |b| {
-        b.iter(|| {
-            let mut acc = 0.0;
-            for &x in &inputs {
-                acc += fastlibm::exp(black_box(x));
-            }
-            black_box(acc)
-        })
-    });
-    group.bench_function("glibc", |b| {
-        b.iter(|| {
-            let mut acc = 0.0;
-            for &x in &inputs {
-                acc += glibc_exp(black_box(x));
-            }
-            black_box(acc)
-        })
-    });
-    group.finish();
+    bench_inputs(c, "exp/smoke", &inputs, fastlibm::exp, glibc_exp);
 }
 
 fn bench_ln(c: &mut Criterion) {
@@ -162,7 +189,6 @@ fn bench_ln(c: &mut Criterion) {
         return;
     }
 
-    let mut group = c.benchmark_group("ln");
     let inputs = [
         f64::MIN_POSITIVE,
         1e-300,
@@ -178,26 +204,7 @@ fn bench_ln(c: &mut Criterion) {
         1e5,
         1e100,
     ];
-
-    group.bench_function("fastlibm", |b| {
-        b.iter(|| {
-            let mut acc = 0.0;
-            for &x in &inputs {
-                acc += fastlibm::ln(black_box(x));
-            }
-            black_box(acc)
-        })
-    });
-    group.bench_function("glibc", |b| {
-        b.iter(|| {
-            let mut acc = 0.0;
-            for &x in &inputs {
-                acc += glibc_log(black_box(x));
-            }
-            black_box(acc)
-        })
-    });
-    group.finish();
+    bench_inputs(c, "ln/smoke", &inputs, fastlibm::ln, glibc_log);
 }
 
 fn bench_sin(c: &mut Criterion) {
@@ -205,7 +212,6 @@ fn bench_sin(c: &mut Criterion) {
         return;
     }
 
-    let mut group = c.benchmark_group("sin");
     let inputs = [
         0.0,
         1e-6,
@@ -220,26 +226,14 @@ fn bench_sin(c: &mut Criterion) {
         1e6,
         -1e6,
     ];
+    let common = gen_range(1024, -2.0 * std::f64::consts::PI, 2.0 * std::f64::consts::PI, 0x1357);
+    let medium = gen_range(1024, -1e6, 1e6, 0x2468);
+    let huge = gen_range(1024, -1e20, 1e20, 0x9abc);
 
-    group.bench_function("fastlibm", |b| {
-        b.iter(|| {
-            let mut acc = 0.0;
-            for &x in &inputs {
-                acc += fastlibm::sin(black_box(x));
-            }
-            black_box(acc)
-        })
-    });
-    group.bench_function("glibc", |b| {
-        b.iter(|| {
-            let mut acc = 0.0;
-            for &x in &inputs {
-                acc += glibc_sin(black_box(x));
-            }
-            black_box(acc)
-        })
-    });
-    group.finish();
+    bench_inputs(c, "sin/smoke", &inputs, fastlibm::sin, glibc_sin);
+    bench_inputs(c, "sin/common", &common, fastlibm::sin, glibc_sin);
+    bench_inputs(c, "sin/medium", &medium, fastlibm::sin, glibc_sin);
+    bench_inputs(c, "sin/huge", &huge, fastlibm::sin, glibc_sin);
 }
 
 fn bench_cos(c: &mut Criterion) {
@@ -247,7 +241,6 @@ fn bench_cos(c: &mut Criterion) {
         return;
     }
 
-    let mut group = c.benchmark_group("cos");
     let inputs = [
         0.0,
         1e-6,
@@ -262,26 +255,14 @@ fn bench_cos(c: &mut Criterion) {
         1e6,
         -1e6,
     ];
+    let common = gen_range(1024, -2.0 * std::f64::consts::PI, 2.0 * std::f64::consts::PI, 0x1357);
+    let medium = gen_range(1024, -1e6, 1e6, 0x2468);
+    let huge = gen_range(1024, -1e20, 1e20, 0x9abc);
 
-    group.bench_function("fastlibm", |b| {
-        b.iter(|| {
-            let mut acc = 0.0;
-            for &x in &inputs {
-                acc += fastlibm::cos(black_box(x));
-            }
-            black_box(acc)
-        })
-    });
-    group.bench_function("glibc", |b| {
-        b.iter(|| {
-            let mut acc = 0.0;
-            for &x in &inputs {
-                acc += glibc_cos(black_box(x));
-            }
-            black_box(acc)
-        })
-    });
-    group.finish();
+    bench_inputs(c, "cos/smoke", &inputs, fastlibm::cos, glibc_cos);
+    bench_inputs(c, "cos/common", &common, fastlibm::cos, glibc_cos);
+    bench_inputs(c, "cos/medium", &medium, fastlibm::cos, glibc_cos);
+    bench_inputs(c, "cos/huge", &huge, fastlibm::cos, glibc_cos);
 }
 
 fn configure_criterion() -> Criterion {

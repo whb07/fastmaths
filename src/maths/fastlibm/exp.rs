@@ -1,4 +1,4 @@
-use super::{f64_from_bits, f64_to_bits, is_inf_bits, is_nan_bits};
+use super::{f64_from_bits, f64_to_bits, fma, is_inf_bits, is_nan_bits};
 
 // ========= glibc-derived exp table (N=128) =========
 
@@ -278,7 +278,8 @@ const EXP_C5: f64 = f64::from_bits(0x3f81111167a4d017);
 const EXP_HI: f64 = 709.782712893384;
 const EXP_LO: f64 = -745.1332191019411;
 
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn specialcase(tmp: f64, sbits: u64, k: i64) -> f64 {
     if k > 0 {
         let sbits = sbits.wrapping_sub(1009u64 << 52);
@@ -325,21 +326,23 @@ pub fn exp(x: f64) -> f64 {
     let kd = z + SHIFT;
     let ki = f64_to_bits(kd);
     let kd = kd - SHIFT;
-    let k = kd as i64;
+    let k = kd as i32;
     let r = x + kd * NEG_LN2_HI_N + kd * NEG_LN2_LO_N;
 
-    let idx = (ki % N) as usize * 2;
+    let idx = ((ki as usize) & ((N - 1) as usize)) << 1;
     let top = ki << (52 - EXP_TABLE_BITS);
-    let tail = f64_from_bits(EXP_TAB_U64[idx]);
-    let sbits = EXP_TAB_U64[idx + 1].wrapping_add(top);
+    // idx is masked by N and doubled, so idx+1 is in-bounds.
+    let tail = f64_from_bits(unsafe { *EXP_TAB_U64.get_unchecked(idx) });
+    let sbits = unsafe { *EXP_TAB_U64.get_unchecked(idx + 1) }.wrapping_add(top);
     let scale = f64_from_bits(sbits);
 
     let r2 = r * r;
     let tmp = tail + r + r2 * (EXP_C2 + r * EXP_C3) + r2 * r2 * (EXP_C4 + r * EXP_C5);
-    if k <= -(1023 * N as i64) || k >= (1024 * N as i64) {
-        return specialcase(tmp, sbits, k);
+    let k_adj = k + (1023 * N as i32);
+    if (k_adj as u32) >= (2047 * N as u32) {
+        return specialcase(tmp, sbits, k as i64);
     }
-    scale + scale * tmp
+    fma(scale, tmp, scale)
 }
 
 #[cfg(test)]

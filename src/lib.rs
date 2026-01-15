@@ -1,3 +1,8 @@
+#![no_std]
+
+#[cfg(test)]
+extern crate std;
+
 pub mod maths;
 
 pub use maths::fastlibm;
@@ -6,21 +11,38 @@ pub use maths::fastlibm;
 mod tests {
     use super::fastlibm;
     use libloading::Library;
+    use std::{eprintln, format};
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, FRAC_PI_6, PI, TAU};
     use std::path::Path;
+    use std::string::String;
+    use std::vec::Vec;
 
-    fn to_ordered_i64(x: f64) -> i64 {
-        let bits = x.to_bits() as i64;
-        if bits < 0 { i64::MIN - bits } else { bits }
+    const MAX_ULP_TOL: f64 = 0.6;
+
+    fn ulp_size(x: f64) -> f64 {
+        if x == 0.0 {
+            return f64::from_bits(1);
+        }
+        if x.is_nan() || x.is_infinite() {
+            return f64::NAN;
+        }
+        let next = if x.is_sign_negative() { x.next_down() } else { x.next_up() };
+        (next - x).abs()
     }
 
-    fn ulp_diff(a: f64, b: f64) -> u64 {
-        let a = to_ordered_i64(a);
-        let b = to_ordered_i64(b);
-        a.abs_diff(b)
+    fn ulp_error(actual: f64, expected: f64) -> f64 {
+        let diff = (actual - expected).abs();
+        if diff == 0.0 {
+            return 0.0;
+        }
+        let ulp = ulp_size(expected);
+        if !ulp.is_finite() || ulp == 0.0 {
+            return f64::INFINITY;
+        }
+        diff / ulp
     }
 
-    fn assert_ulp_eq(actual: f64, expected: f64, max_ulps: u64, context: &str) {
+    fn assert_ulp_eq(actual: f64, expected: f64, max_ulps: f64, context: &str) {
         if actual.is_nan() && expected.is_nan() {
             return;
         }
@@ -34,7 +56,7 @@ mod tests {
             );
             return;
         }
-        let ulps = ulp_diff(actual, expected);
+        let ulps = ulp_error(actual, expected);
         assert!(
             ulps <= max_ulps,
             "{context}: expected {expected}, got {actual} (ulps={ulps})"
@@ -244,7 +266,7 @@ mod tests {
             return None;
         }
         let path = std::env::var("FASTLIBM_GLIBC_LIBM")
-            .unwrap_or_else(|_| "/tmp/maths/glibc-build/math/libm.so".to_string());
+            .unwrap_or_else(|_| String::from("/tmp/maths/glibc-build/math/libm.so"));
         if !Path::new(&path).exists() {
             eprintln!("glibc libm not found at {path}");
             return None;
@@ -252,7 +274,7 @@ mod tests {
         Some(path)
     }
 
-    fn assert_ulp_eq_glibc(actual: f64, expected: f64, max_ulps: u64, context: &str) {
+    fn assert_ulp_eq_glibc(actual: f64, expected: f64, max_ulps: f64, context: &str) {
         if actual == 0.0 && expected == 0.0 {
             assert_eq!(
                 actual.to_bits(),
@@ -285,7 +307,7 @@ mod tests {
             let expected = x.exp();
             let actual = fastlibm::exp(x);
             let context = format!("exp({x})");
-            assert_ulp_eq(actual, expected, 1, &context);
+            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &context);
         }
     }
 
@@ -309,7 +331,7 @@ mod tests {
             let expected = x.ln();
             let actual = fastlibm::ln(x);
             let context = format!("ln({x})");
-            assert_ulp_eq(actual, expected, 1, &context);
+            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &context);
         }
     }
 
@@ -351,8 +373,8 @@ mod tests {
             let cos_expected = x.cos();
             let sin_actual = fastlibm::sin(x);
             let cos_actual = fastlibm::cos(x);
-            assert_ulp_eq(sin_actual, sin_expected, 1, &format!("sin({x})"));
-            assert_ulp_eq(cos_actual, cos_expected, 1, &format!("cos({x})"));
+            assert_ulp_eq(sin_actual, sin_expected, MAX_ULP_TOL, &format!("sin({x})"));
+            assert_ulp_eq(cos_actual, cos_expected, MAX_ULP_TOL, &format!("cos({x})"));
         }
     }
 
@@ -365,8 +387,21 @@ mod tests {
             let cos_expected = x.cos();
             let sin_actual = fastlibm::sin(x);
             let cos_actual = fastlibm::cos(x);
-            assert_ulp_eq(sin_actual, sin_expected, 1, &format!("sin({x})"));
-            assert_ulp_eq(cos_actual, cos_expected, 1, &format!("cos({x})"));
+            assert_ulp_eq(sin_actual, sin_expected, MAX_ULP_TOL, &format!("sin({x})"));
+            assert_ulp_eq(cos_actual, cos_expected, MAX_ULP_TOL, &format!("cos({x})"));
+        }
+    }
+
+    #[test]
+    fn sincos_matches_std_ulps() {
+        let inputs = trig_inputs();
+
+        for &x in &inputs {
+            let (sin_actual, cos_actual) = fastlibm::sincos(x);
+            let sin_expected = x.sin();
+            let cos_expected = x.cos();
+            assert_ulp_eq(sin_actual, sin_expected, MAX_ULP_TOL, &format!("sincos sin({x})"));
+            assert_ulp_eq(cos_actual, cos_expected, MAX_ULP_TOL, &format!("sincos cos({x})"));
         }
     }
 
@@ -382,8 +417,8 @@ mod tests {
             let cos_pos = fastlibm::cos(x);
             let cos_neg = fastlibm::cos(-x);
 
-            assert_ulp_eq(sin_neg, -sin_pos, 1, &format!("sin symmetry at {x}"));
-            assert_ulp_eq(cos_neg, cos_pos, 1, &format!("cos symmetry at {x}"));
+            assert_ulp_eq(sin_neg, -sin_pos, MAX_ULP_TOL, &format!("sin symmetry at {x}"));
+            assert_ulp_eq(cos_neg, cos_pos, MAX_ULP_TOL, &format!("cos symmetry at {x}"));
         }
     }
 
@@ -400,7 +435,7 @@ mod tests {
             let expected = unsafe { exp(x) };
             let actual = fastlibm::exp(x);
             let context = format!("glibc exp({x})");
-            assert_ulp_eq_glibc(actual, expected, 1, &context);
+            assert_ulp_eq_glibc(actual, expected, MAX_ULP_TOL, &context);
         }
     }
 
@@ -417,7 +452,7 @@ mod tests {
             let expected = unsafe { log(x) };
             let actual = fastlibm::ln(x);
             let context = format!("glibc log({x})");
-            assert_ulp_eq_glibc(actual, expected, 1, &context);
+            assert_ulp_eq_glibc(actual, expected, MAX_ULP_TOL, &context);
         }
     }
 
@@ -437,8 +472,8 @@ mod tests {
             let cos_expected = unsafe { cos(x) };
             let sin_actual = fastlibm::sin(x);
             let cos_actual = fastlibm::cos(x);
-            assert_ulp_eq_glibc(sin_actual, sin_expected, 1, &format!("glibc sin({x})"));
-            assert_ulp_eq_glibc(cos_actual, cos_expected, 1, &format!("glibc cos({x})"));
+            assert_ulp_eq_glibc(sin_actual, sin_expected, MAX_ULP_TOL, &format!("glibc sin({x})"));
+            assert_ulp_eq_glibc(cos_actual, cos_expected, MAX_ULP_TOL, &format!("glibc cos({x})"));
         }
     }
 }

@@ -1,12 +1,12 @@
 #![allow(
     clippy::collapsible_if,
     clippy::needless_late_init,
-    clippy::needless_range_loop
+    clippy::needless_range_loop,
+    dead_code
 )]
 
-use super::{
-    f64_to_bits, floor_f64, hi_word, is_inf_bits, is_nan_bits, lo_word, scalbn, with_hi_lo,
-};
+use super::{floor_f64, hi_word, lo_word, scalbn, with_hi_lo};
+use super::sincos_tab::SINCOS_TAB;
 
 // ========= fdlibm/glibc-grade sin/cos =========
 //
@@ -148,6 +148,53 @@ const C3: f64 = 2.48015872894767294178e-05;
 const C4: f64 = -2.75573143513906633035e-07;
 const C5: f64 = 2.08757232129817482790e-09;
 const C6: f64 = -1.13596475577881948265e-11;
+
+// ========= IBM Accurate Mathematical Library sin/cos =========
+const IBM_SN3: f64 = -1.66666666666664880952546298448555E-01;
+const IBM_SN5: f64 = 8.33333214285722277379541354343671E-03;
+const IBM_CS2: f64 = 4.99999999999999999999950396842453E-01;
+const IBM_CS4: f64 = -4.16666666666664434524222570944589E-02;
+const IBM_CS6: f64 = 1.38888874007937613028114285595617E-03;
+
+const IBM_S1: f64 = f64::from_bits(0xbfc5_5555_5555_5555);
+const IBM_S2: f64 = f64::from_bits(0x3f81_1111_1111_0ece);
+const IBM_S3: f64 = f64::from_bits(0xbf2a_01a0_19db_08b8);
+const IBM_S4: f64 = f64::from_bits(0x3ec7_1de2_7b9a_7ed9);
+const IBM_S5: f64 = f64::from_bits(0xbe5a_ddff_c2fc_df59);
+
+const IBM_BIG: f64 = f64::from_bits(0x42c8_0000_0000_0000);
+const IBM_HP0: f64 = f64::from_bits(0x3ff9_21fb_5444_2d18);
+const IBM_HP1: f64 = f64::from_bits(0x3c91_a626_3314_5c07);
+const IBM_MP1: f64 = f64::from_bits(0x3ff9_21fb_5800_0000);
+const IBM_MP2: f64 = f64::from_bits(0xbe4d_de97_3c00_0000);
+const IBM_PP3: f64 = f64::from_bits(0xbc8c_b3b3_9800_0000);
+const IBM_PP4: f64 = f64::from_bits(0xbacd_747f_23e3_2ed7);
+const IBM_HPINV: f64 = f64::from_bits(0x3fe4_5f30_6dc9_c883);
+const IBM_TOINT: f64 = f64::from_bits(0x4338_0000_0000_0000);
+const IBM_SPLIT: f64 = f64::from_bits(0x41a0_0000_0100_0000); // 2^27 + 1
+
+const BR_T576: f64 = f64::from_bits(0x63f0_0000_0000_0000);
+const BR_TM600: f64 = f64::from_bits(0x1a70_0000_0000_0000);
+const BR_TM24: f64 = f64::from_bits(0x3e70_0000_0000_0000);
+const BR_BIG: f64 = f64::from_bits(0x4338_0000_0000_0000);
+const BR_BIG1: f64 = f64::from_bits(0x4358_0000_0000_0000);
+const BR_MP2: f64 = f64::from_bits(0xbe4d_de97_4000_0000);
+
+const TOVERP: [f64; 75] = [
+    10680707.0, 7228996.0, 1387004.0, 2578385.0, 16069853.0, 12639074.0,
+    9804092.0, 4427841.0, 16666979.0, 11263675.0, 12935607.0, 2387514.0,
+    4345298.0, 14681673.0, 3074569.0, 13734428.0, 16653803.0, 1880361.0,
+    10960616.0, 8533493.0, 3062596.0, 8710556.0, 7349940.0, 6258241.0,
+    3772886.0, 3769171.0, 3798172.0, 8675211.0, 12450088.0, 3874808.0,
+    9961438.0, 366607.0, 15675153.0, 9132554.0, 7151469.0, 3571407.0,
+    2607881.0, 12013382.0, 4155038.0, 6285869.0, 7677882.0, 13102053.0,
+    15825725.0, 473591.0, 9065106.0, 15363067.0, 6271263.0, 9264392.0,
+    5636912.0, 4652155.0, 7056368.0, 13614112.0, 10155062.0, 1944035.0,
+    9527646.0, 15080200.0, 6658437.0, 6231200.0, 6832269.0, 16767104.0,
+    5075751.0, 3212806.0, 1398474.0, 7579849.0, 6349435.0, 12618859.0,
+    4703257.0, 12806093.0, 14477321.0, 2786137.0, 12875403.0, 9837734.0,
+    14528324.0, 13719321.0, 343717.0,
+];
 
 #[inline(always)]
 fn kernel_sin(x: f64, y: f64, iy: i32) -> f64 {
@@ -435,7 +482,10 @@ fn rem_pio2(x: f64) -> (i32, f64, f64) {
     // medium: |x| <= 2^19*(pi/2)
     if ix <= 0x4139_21fbu32 {
         let t = x.abs();
-        let n = (t.mul_add(INVPIO2, HALF)) as i32;
+        #[cfg(target_feature = "fma")]
+        let n = (super::fma(t, INVPIO2, HALF)) as i32;
+        #[cfg(not(target_feature = "fma"))]
+        let n = (t * INVPIO2 + HALF) as i32;
         let fn_ = n as f64;
 
         let mut r = t - fn_ * PIO2_1;
@@ -511,35 +561,284 @@ fn rem_pio2(x: f64) -> (i32, f64, f64) {
 }
 
 #[inline(always)]
-pub(super) fn sin(x: f64) -> f64 {
-    let ux = f64_to_bits(x);
-    if is_nan_bits(ux) || is_inf_bits(ux) {
-        return f64::NAN;
+fn taylor_sin(xx: f64, x: f64, dx: f64) -> f64 {
+    let poly = (((IBM_S5 * xx + IBM_S4) * xx + IBM_S3) * xx + IBM_S2) * xx + IBM_S1;
+    let t = (poly * x - 0.5 * dx) * xx + dx;
+    x + t
+}
+
+#[inline(always)]
+fn sincos_table_lookup(u: f64) -> (f64, f64, f64, f64) {
+    let idx = (lo_word(u) as usize) << 2;
+    let sn = SINCOS_TAB[idx];
+    let ssn = SINCOS_TAB[idx + 1];
+    let cs = SINCOS_TAB[idx + 2];
+    let ccs = SINCOS_TAB[idx + 3];
+    (sn, ssn, cs, ccs)
+}
+
+#[inline(always)]
+fn do_cos(mut x: f64, mut dx: f64) -> f64 {
+    if x < 0.0 {
+        dx = -dx;
+    }
+    let u = IBM_BIG + x.abs();
+    x = x.abs() - (u - IBM_BIG) + dx;
+
+    let xx = x * x;
+    let s = x + x * xx * (IBM_SN3 + xx * IBM_SN5);
+    let c = xx * (IBM_CS2 + xx * (IBM_CS4 + xx * IBM_CS6));
+    let (sn, ssn, cs, ccs) = sincos_table_lookup(u);
+    let cor = (ccs - s * ssn - cs * c) - sn * s;
+    cs + cor
+}
+
+#[inline(always)]
+fn do_sin(mut x: f64, mut dx: f64) -> f64 {
+    let xold = x;
+    if x.abs() < 0.126 {
+        return taylor_sin(x * x, x, dx);
+    }
+    if x <= 0.0 {
+        dx = -dx;
+    }
+    let u = IBM_BIG + x.abs();
+    x = x.abs() - (u - IBM_BIG);
+
+    let xx = x * x;
+    let s = x + (dx + x * xx * (IBM_SN3 + xx * IBM_SN5));
+    let c = x * dx + xx * (IBM_CS2 + xx * (IBM_CS4 + xx * IBM_CS6));
+    let (sn, ssn, cs, ccs) = sincos_table_lookup(u);
+    let cor = (ssn + s * ccs - sn * c) + cs * s;
+    let res = sn + cor;
+    if xold.is_sign_negative() { -res } else { res }
+}
+
+#[inline(always)]
+fn do_sincos(a: f64, da: f64, n: i32) -> f64 {
+    let mut retval = if (n & 1) != 0 {
+        do_cos(a, da)
+    } else {
+        do_sin(a, da)
+    };
+    if (n & 2) != 0 {
+        retval = -retval;
+    }
+    retval
+}
+
+#[inline(always)]
+fn reduce_sincos(x: f64) -> (i32, f64, f64) {
+    let t = x * IBM_HPINV + IBM_TOINT;
+    let xn = t - IBM_TOINT;
+    let n = (lo_word(t) & 3) as i32;
+
+    let y = (x - xn * IBM_MP1) - xn * IBM_MP2;
+
+    let t1 = xn * IBM_PP3;
+    let t2 = y - t1;
+    let mut db = (y - t2) - t1;
+
+    let t1 = xn * IBM_PP4;
+    let b = t2 - t1;
+    db += (t2 - b) - t1;
+
+    (n, b, db)
+}
+
+#[inline(always)]
+fn adjust_gor(gor: f64, k: i32) -> f64 {
+    let mut hi = hi_word(gor);
+    hi = hi.wrapping_sub(((k * 24) as u32) << 20);
+    let lo = lo_word(gor);
+    f64::from_bits(((hi as u64) << 32) | (lo as u64))
+}
+
+#[inline(always)]
+fn branred(x: f64) -> (i32, f64, f64) {
+    let mut r = [0.0f64; 6];
+    let mut sum = 0.0;
+
+    let x = x * BR_TM600;
+    let t = x * IBM_SPLIT;
+    let x1 = t - (t - x);
+    let x2 = x - x1;
+
+    let mut k = (((hi_word(x1) >> 20) & 2047) as i32 - 450) / 24;
+    if k < 0 {
+        k = 0;
+    }
+    let mut gor = adjust_gor(BR_T576, k);
+    for i in 0..6 {
+        r[i] = x1 * TOVERP[k as usize + i] * gor;
+        gor *= BR_TM24;
+    }
+    for i in 0..3 {
+        let s = (r[i] + BR_BIG) - BR_BIG;
+        sum += s;
+        r[i] -= s;
+    }
+    let mut t = 0.0;
+    for i in 0..6 {
+        t += r[5 - i];
+    }
+    let mut bb = (((((r[0] - t) + r[1]) + r[2]) + r[3]) + r[4]) + r[5];
+    let s = (t + BR_BIG) - BR_BIG;
+    sum += s;
+    t -= s;
+    let mut b = t + bb;
+    bb = (t - b) + bb;
+    let s = (sum + BR_BIG1) - BR_BIG1;
+    sum -= s;
+
+    let b1 = b;
+    let bb1 = bb;
+    let sum1 = sum;
+    sum = 0.0;
+
+    let mut k = (((hi_word(x2) >> 20) & 2047) as i32 - 450) / 24;
+    if k < 0 {
+        k = 0;
+    }
+    let mut gor = adjust_gor(BR_T576, k);
+    for i in 0..6 {
+        r[i] = x2 * TOVERP[k as usize + i] * gor;
+        gor *= BR_TM24;
+    }
+    for i in 0..3 {
+        let s = (r[i] + BR_BIG) - BR_BIG;
+        sum += s;
+        r[i] -= s;
+    }
+    t = 0.0;
+    for i in 0..6 {
+        t += r[5 - i];
+    }
+    bb = (((((r[0] - t) + r[1]) + r[2]) + r[3]) + r[4]) + r[5];
+    let s = (t + BR_BIG) - BR_BIG;
+    sum += s;
+    t -= s;
+    b = t + bb;
+    bb = (t - b) + bb;
+    let s = (sum + BR_BIG1) - BR_BIG1;
+    sum -= s;
+
+    let b2 = b;
+    let bb2 = bb;
+    let sum2 = sum;
+
+    let mut sum = sum1 + sum2;
+    let mut b = b1 + b2;
+    let bb = if b1.abs() > b2.abs() {
+        (b1 - b) + b2
+    } else {
+        (b2 - b) + b1
+    };
+
+    if b > 0.5 {
+        b -= 1.0;
+        sum += 1.0;
+    } else if b < -0.5 {
+        b += 1.0;
+        sum -= 1.0;
     }
 
-    let (n, y0, y1) = rem_pio2(x);
-    match n & 3 {
-        0 => kernel_sin(y0, y1, 1),
-        1 => kernel_cos(y0, y1),
-        2 => -kernel_sin(y0, y1, 1),
-        _ => -kernel_cos(y0, y1),
+    let s = b + (bb + bb1 + bb2);
+    let t = ((b - s) + bb) + (bb1 + bb2);
+    let b = s * IBM_SPLIT;
+    let t1 = b - (b - s);
+    let t2 = s - t1;
+    let b = s * IBM_HP0;
+    let bb = (((t1 * IBM_MP1 - b) + t1 * BR_MP2) + t2 * IBM_MP1)
+        + (t2 * BR_MP2 + s * IBM_HP1 + t * IBM_HP0);
+    let s = b + bb;
+    let t = (b - s) + bb;
+    let n = (sum as i32) & 3;
+    (n, s, t)
+}
+
+#[inline(always)]
+pub(super) fn sin(x: f64) -> f64 {
+    let k = hi_word(x) & 0x7fff_ffff;
+    if k < 0x3e50_0000 {
+        return x;
     }
+    if k < 0x3feb_6000 {
+        return do_sin(x, 0.0);
+    }
+    if k < 0x4003_68fd {
+        let t = IBM_HP0 - x.abs();
+        let v = do_cos(t, IBM_HP1);
+        return if x.is_sign_negative() { -v } else { v };
+    }
+    if k < 0x4199_21fb {
+        let (n, a, da) = reduce_sincos(x);
+        return do_sincos(a, da, n);
+    }
+    if k < 0x7ff0_0000 {
+        let (n, a, da) = branred(x);
+        return do_sincos(a, da, n);
+    }
+    x / x
 }
 
 #[inline(always)]
 pub(super) fn cos(x: f64) -> f64 {
-    let ux = f64_to_bits(x);
-    if is_nan_bits(ux) || is_inf_bits(ux) {
-        return f64::NAN;
+    let k = hi_word(x) & 0x7fff_ffff;
+    if k < 0x3e40_0000 {
+        return 1.0;
     }
+    if k < 0x3feb_6000 {
+        return do_cos(x, 0.0);
+    }
+    if k < 0x4003_68fd {
+        let y = IBM_HP0 - x.abs();
+        let a = y + IBM_HP1;
+        let da = (y - a) + IBM_HP1;
+        return do_sin(a, da);
+    }
+    if k < 0x4199_21fb {
+        let (n, a, da) = reduce_sincos(x);
+        return do_sincos(a, da, n + 1);
+    }
+    if k < 0x7ff0_0000 {
+        let (n, a, da) = branred(x);
+        return do_sincos(a, da, n + 1);
+    }
+    x / x
+}
 
-    let (n, y0, y1) = rem_pio2(x);
-    match n & 3 {
-        0 => kernel_cos(y0, y1),
-        1 => -kernel_sin(y0, y1, 1),
-        2 => -kernel_cos(y0, y1),
-        _ => kernel_sin(y0, y1, 1),
+#[inline(always)]
+pub fn sincos(x: f64) -> (f64, f64) {
+    let k = hi_word(x) & 0x7fff_ffff;
+    if k < 0x3e40_0000 {
+        return (x, 1.0);
     }
+    if k < 0x3e50_0000 {
+        return (x, 1.0);
+    }
+    if k < 0x3feb_6000 {
+        return (do_sin(x, 0.0), do_cos(x, 0.0));
+    }
+    if k < 0x4003_68fd {
+        let t = IBM_HP0 - x.abs();
+        let sin_v = do_cos(t, IBM_HP1);
+        let sin_v = if x.is_sign_negative() { -sin_v } else { sin_v };
+        let a = t + IBM_HP1;
+        let da = (t - a) + IBM_HP1;
+        let cos_v = do_sin(a, da);
+        return (sin_v, cos_v);
+    }
+    if k < 0x4199_21fb {
+        let (n, a, da) = reduce_sincos(x);
+        return (do_sincos(a, da, n), do_sincos(a, da, n + 1));
+    }
+    if k < 0x7ff0_0000 {
+        let (n, a, da) = branred(x);
+        return (do_sincos(a, da, n), do_sincos(a, da, n + 1));
+    }
+    let nan = x / x;
+    (nan, nan)
 }
 
 #[cfg(test)]

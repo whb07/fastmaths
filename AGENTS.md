@@ -6,6 +6,7 @@ This crate aims to implement **fast, correct** replacements for glibc `libm` rou
 
 - **Behavior parity with glibc** across edge cases (NaNs, `±0.0`, `±∞`, subnormals, huge arguments, and rounding where applicable).
 - **Performance parity or better** than the system glibc implementation on supported targets (ideally faster).
+- **No System Libm:** Deferring to or use of the system's `libm` (e.g., calling `f64::sin` or similar within the implementation) is not allowed. The crate must provide its own self-contained implementations.
 
 ## Project Structure & Module Organization
 

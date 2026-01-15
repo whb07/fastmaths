@@ -586,32 +586,41 @@ pub fn ln(x: f64) -> f64 {
         return y + lo + hi;
     }
 
+    // Fast path for exact powers of two (positive normals only).
+    if (ix & 0x8000_0000_0000_0000) == 0 {
+        let mant = ix & 0x000f_ffff_ffff_ffff;
+        let exp = (ix >> 52) & 0x7ff;
+        if mant == 0 && exp != 0 && exp != 0x7ff {
+            let k = exp as i32 - 1023;
+            let kd = k as f64;
+            return kd * LN2_HI + kd * LN2_LO;
+        }
+    }
+
     if top.wrapping_sub(0x0010) >= 0x7ff0 - 0x0010 {
-        if (ix << 1) == 0 {
-            return f64::NEG_INFINITY;
+        let (ix2, special) = log_special(ix, x);
+        if let Some(value) = special {
+            return value;
         }
-        if ix == 0x7ff0_0000_0000_0000 {
-            return f64::INFINITY;
-        }
-        if (top & 0x8000) != 0 || (top & 0x7ff0) == 0x7ff0 {
-            return f64::NAN;
-        }
-        ix = f64_to_bits(x * f64::from_bits(0x4330_0000_0000_0000));
-        ix = ix.wrapping_sub(52u64 << 52);
+        ix = ix2;
     }
 
     let tmp = ix.wrapping_sub(OFF);
     let i = ((tmp >> (52 - LOG_TABLE_BITS)) & (N - 1)) as usize;
     let k = ((tmp as i64) >> 52) as i32;
     let iz = ix.wrapping_sub(tmp & (0xfff_u64 << 52));
-    let invc = f64_from_bits(LOG_INVC_U64[i]);
-    let logc = f64_from_bits(LOG_LOGC_U64[i]);
+    // Masked index guarantees bounds; avoid repeated bounds checks on hot path.
+    let invc = unsafe { f64_from_bits(*LOG_INVC_U64.get_unchecked(i)) };
+    let logc = unsafe { f64_from_bits(*LOG_LOGC_U64.get_unchecked(i)) };
     let z = f64_from_bits(iz);
     #[cfg(target_feature = "fma")]
-    let r = z.mul_add(invc, -1.0);
+    let r = super::fma(z, invc, -1.0);
 
     #[cfg(not(target_feature = "fma"))]
-    let r = (z - f64_from_bits(LOG_CHI_U64[i]) - f64_from_bits(LOG_CLO_U64[i])) * invc;
+    let r = (z
+        - unsafe { f64_from_bits(*LOG_CHI_U64.get_unchecked(i)) }
+        - unsafe { f64_from_bits(*LOG_CLO_U64.get_unchecked(i)) })
+        * invc;
     let kd = k as f64;
 
     let w = kd * LN2_HI + logc;
@@ -619,7 +628,43 @@ pub fn ln(x: f64) -> f64 {
     let lo = w - hi + r + kd * LN2_LO;
 
     let r2 = r * r;
-    lo + r2 * LOG_A0 + r * r2 * (LOG_A1 + r * LOG_A2 + r2 * (LOG_A3 + r * LOG_A4)) + hi
+    let poly = eval_poly(r, r2);
+    lo + poly + hi
+}
+
+#[inline(always)]
+fn eval_poly(r: f64, r2: f64) -> f64 {
+    #[cfg(target_feature = "fma")]
+    {
+        let p = super::fma(LOG_A4, r, LOG_A3);
+        let p = super::fma(p, r, LOG_A2);
+        let p = super::fma(p, r, LOG_A1);
+        let p = super::fma(p, r, LOG_A0);
+        r2 * p
+    }
+    #[cfg(not(target_feature = "fma"))]
+    {
+        let p = LOG_A0 + r * (LOG_A1 + r * (LOG_A2 + r * (LOG_A3 + r * LOG_A4)));
+        r2 * p
+    }
+}
+
+#[cold]
+#[inline(never)]
+fn log_special(ix: u64, x: f64) -> (u64, Option<f64>) {
+    let top = (ix >> 48) as u16;
+    if (ix << 1) == 0 {
+        return (ix, Some(f64::NEG_INFINITY));
+    }
+    if ix == 0x7ff0_0000_0000_0000 {
+        return (ix, Some(f64::INFINITY));
+    }
+    if (top & 0x8000) != 0 || (top & 0x7ff0) == 0x7ff0 {
+        return (ix, Some(f64::NAN));
+    }
+    let mut ix = f64_to_bits(x * f64::from_bits(0x4330_0000_0000_0000));
+    ix = ix.wrapping_sub(52u64 << 52);
+    (ix, None)
 }
 
 #[cfg(test)]
