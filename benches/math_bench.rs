@@ -1,6 +1,86 @@
-use criterion::{black_box, Criterion};
+use criterion::{Criterion, black_box};
 use fastmaths::fastlibm;
 use std::time::Duration;
+
+use std::sync::OnceLock;
+
+struct LibmFns {
+    exp: unsafe extern "C" fn(f64) -> f64,
+    log: unsafe extern "C" fn(f64) -> f64,
+    sin: unsafe extern "C" fn(f64) -> f64,
+    cos: unsafe extern "C" fn(f64) -> f64,
+}
+
+static LIBM_FNS: OnceLock<Option<LibmFns>> = OnceLock::new();
+
+fn libm_path() -> Option<String> {
+    if let Ok(value) = std::env::var("FASTLIBM_GLIBC_LIBM") {
+        let value = value.trim().to_string();
+        if !value.is_empty() {
+            return Some(value);
+        }
+    }
+    let default = "/tmp/maths/glibc-build/math/libm.so";
+    if std::path::Path::new(default).exists() {
+        return Some(default.to_string());
+    }
+    None
+}
+
+fn load_libm() -> Option<LibmFns> {
+    let path = libm_path()?;
+    let lib = unsafe { libloading::Library::new(&path).ok()? };
+    let lib = Box::leak(Box::new(lib));
+    unsafe {
+        let exp: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> = lib.get(b"exp").ok()?;
+        let log: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> = lib.get(b"log").ok()?;
+        let sin: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> = lib.get(b"sin").ok()?;
+        let cos: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> = lib.get(b"cos").ok()?;
+        eprintln!("Using libm from {path}");
+        Some(LibmFns {
+            exp: *exp,
+            log: *log,
+            sin: *sin,
+            cos: *cos,
+        })
+    }
+}
+
+fn libm() -> Option<&'static LibmFns> {
+    LIBM_FNS.get_or_init(load_libm).as_ref()
+}
+
+fn glibc_exp(x: f64) -> f64 {
+    if let Some(fns) = libm() {
+        unsafe { (fns.exp)(x) }
+    } else {
+        x.exp()
+    }
+}
+
+fn glibc_log(x: f64) -> f64 {
+    if let Some(fns) = libm() {
+        unsafe { (fns.log)(x) }
+    } else {
+        x.ln()
+    }
+}
+
+fn glibc_sin(x: f64) -> f64 {
+    if let Some(fns) = libm() {
+        unsafe { (fns.sin)(x) }
+    } else {
+        x.sin()
+    }
+}
+
+fn glibc_cos(x: f64) -> f64 {
+    if let Some(fns) = libm() {
+        unsafe { (fns.cos)(x) }
+    } else {
+        x.cos()
+    }
+}
 
 fn bench_only() -> Option<String> {
     if let Ok(value) = std::env::var("FASTLIBM_BENCH_ONLY") {
@@ -69,7 +149,7 @@ fn bench_exp(c: &mut Criterion) {
         b.iter(|| {
             let mut acc = 0.0;
             for &x in &inputs {
-                acc += black_box(x).exp();
+                acc += glibc_exp(black_box(x));
             }
             black_box(acc)
         })
@@ -112,7 +192,7 @@ fn bench_ln(c: &mut Criterion) {
         b.iter(|| {
             let mut acc = 0.0;
             for &x in &inputs {
-                acc += black_box(x).ln();
+                acc += glibc_log(black_box(x));
             }
             black_box(acc)
         })
@@ -154,7 +234,7 @@ fn bench_sin(c: &mut Criterion) {
         b.iter(|| {
             let mut acc = 0.0;
             for &x in &inputs {
-                acc += black_box(x).sin();
+                acc += glibc_sin(black_box(x));
             }
             black_box(acc)
         })
@@ -196,7 +276,7 @@ fn bench_cos(c: &mut Criterion) {
         b.iter(|| {
             let mut acc = 0.0;
             for &x in &inputs {
-                acc += black_box(x).cos();
+                acc += glibc_cos(black_box(x));
             }
             black_box(acc)
         })
