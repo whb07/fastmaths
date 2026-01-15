@@ -6,3 +6,5 @@ gen_glibc.rs
 glibc_values.txt
 
 bench_latest.txt
+
+bench_summary.txt

@@ -11,6 +11,8 @@ pub use maths::fastlibm;
 mod tests {
     use super::fastlibm;
     use libloading::Library;
+    #[cfg(feature = "mpfr")]
+    use rug::Float;
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, FRAC_PI_6, PI, TAU};
     use std::path::Path;
     use std::string::String;
@@ -18,6 +20,8 @@ mod tests {
     use std::{eprintln, format};
 
     const MAX_ULP_TOL: f64 = 0.6;
+    #[cfg(feature = "mpfr")]
+    const MPFR_PREC: u32 = 256;
 
     fn ulp_size(x: f64) -> f64 {
         if x == 0.0 {
@@ -44,6 +48,23 @@ mod tests {
             return f64::INFINITY;
         }
         diff / ulp
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_exp_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.exp_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn exp_reference(x: f64) -> f64 {
+        mpfr_exp_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn exp_reference(x: f64) -> f64 {
+        x.exp()
     }
 
     fn assert_ulp_eq(actual: f64, expected: f64, max_ulps: f64, context: &str) {
@@ -308,7 +329,7 @@ mod tests {
         let inputs = exp_inputs();
 
         for &x in &inputs {
-            let expected = x.exp();
+            let expected = exp_reference(x);
             let actual = fastlibm::exp(x);
             let context = format!("exp({x})");
             assert_ulp_eq(actual, expected, MAX_ULP_TOL, &context);
@@ -561,10 +582,11 @@ mod tests {
 
     use proptest::prelude::*;
     proptest! {
+        #[cfg(feature = "mpfr")]
         #[test]
         fn ptest_exp(x in -745.0..709.78_f64) {
             let actual = fastlibm::exp(x);
-            let expected = x.exp();
+            let expected = exp_reference(x);
             assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("exp({x})"));
         }
 
