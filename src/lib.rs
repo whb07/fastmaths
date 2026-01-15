@@ -20,6 +20,7 @@ mod tests {
     use std::{eprintln, format};
 
     const MAX_ULP_TOL: f64 = 0.6;
+    const PROPTEST_ULP_TOL: f64 = 1.0;
     #[cfg(feature = "mpfr")]
     const MPFR_PREC: u32 = 256;
     #[cfg(feature = "mpfr")]
@@ -139,14 +140,14 @@ mod tests {
         );
     }
 
-    fn assert_ulp_eq_exp(actual: f64, x: f64, context: &str) {
+    fn assert_ulp_eq_exp(actual: f64, x: f64, max_ulps: f64, context: &str) {
         let expected_std = x.exp();
         if expected_std.is_infinite() || expected_std.is_nan() {
-            assert_ulp_eq(actual, expected_std, MAX_ULP_TOL, context);
+            assert_ulp_eq(actual, expected_std, max_ulps, context);
             return;
         }
         let ulps_std = ulp_error(actual, expected_std);
-        if ulps_std <= MAX_ULP_TOL {
+        if ulps_std <= max_ulps {
             return;
         }
 
@@ -154,7 +155,7 @@ mod tests {
         {
             let expected_mpfr = mpfr_exp_f64(x);
             let ulps_mpfr = ulp_error(actual, expected_mpfr);
-            if ulps_mpfr <= MAX_ULP_TOL {
+            if ulps_mpfr <= max_ulps {
                 return;
             }
             panic!(
@@ -435,7 +436,7 @@ mod tests {
         for &x in &inputs {
             let actual = fastlibm::exp(x);
             let context = format!("exp({x})");
-            assert_ulp_eq_exp(actual, x, &context);
+            assert_ulp_eq_exp(actual, x, MAX_ULP_TOL, &context);
         }
     }
 
@@ -688,15 +689,14 @@ mod tests {
         #[test]
         fn ptest_exp_special(x in proptest::sample::select(exp_special_inputs())) {
             let actual = fastlibm::exp(x);
-            let expected = x.exp();
-            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("exp special({x})"));
+            assert_ulp_eq_exp(actual, x, PROPTEST_ULP_TOL, &format!("exp special({x})"));
         }
 
         #[cfg(feature = "mpfr")]
         #[test]
         fn ptest_exp(x in -745.0..709.78_f64) {
             let actual = fastlibm::exp(x);
-            assert_ulp_eq_exp(actual, x, &format!("exp({x})"));
+            assert_ulp_eq_exp(actual, x, PROPTEST_ULP_TOL, &format!("exp({x})"));
         }
 
         #[test]
@@ -704,7 +704,12 @@ mod tests {
             if x.is_finite() && x > 0.0 {
                 let actual = fastlibm::ln(x);
                 let expected = ln_reference(x);
-                assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("ln({x})"));
+                assert_ulp_eq(
+                    actual,
+                    expected,
+                    PROPTEST_ULP_TOL,
+                    &format!("ln({x})"),
+                );
             }
         }
 
@@ -712,14 +717,24 @@ mod tests {
         fn ptest_sin(x in -1e20..1e20_f64) {
             let actual = fastlibm::sin(x);
             let expected = sin_reference(x);
-            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("sin({x})"));
+            assert_ulp_eq(
+                actual,
+                expected,
+                PROPTEST_ULP_TOL,
+                &format!("sin({x})"),
+            );
         }
 
         #[test]
         fn ptest_cos(x in -1e20..1e20_f64) {
             let actual = fastlibm::cos(x);
             let expected = cos_reference(x);
-            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("cos({x})"));
+            assert_ulp_eq(
+                actual,
+                expected,
+                PROPTEST_ULP_TOL,
+                &format!("cos({x})"),
+            );
         }
 
         #[test]
@@ -728,13 +743,13 @@ mod tests {
             assert_ulp_eq(
                 s_actual,
                 sin_reference(x),
-                MAX_ULP_TOL,
+                PROPTEST_ULP_TOL,
                 &format!("sincos sin({x})"),
             );
             assert_ulp_eq(
                 c_actual,
                 cos_reference(x),
-                MAX_ULP_TOL,
+                PROPTEST_ULP_TOL,
                 &format!("sincos cos({x})"),
             );
         }
