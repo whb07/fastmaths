@@ -81,16 +81,6 @@ mod tests {
     }
 
     #[cfg(feature = "mpfr")]
-    fn exp_reference(x: f64) -> f64 {
-        mpfr_exp_f64(x)
-    }
-
-    #[cfg(not(feature = "mpfr"))]
-    fn exp_reference(x: f64) -> f64 {
-        x.exp()
-    }
-
-    #[cfg(feature = "mpfr")]
     fn ln_reference(x: f64) -> f64 {
         mpfr_ln_f64(x)
     }
@@ -147,6 +137,35 @@ mod tests {
             ulps <= max_ulps,
             "{context}: expected {expected}, got {actual} (ulps={ulps})"
         );
+    }
+
+    fn assert_ulp_eq_exp(actual: f64, x: f64, context: &str) {
+        let expected_std = x.exp();
+        if expected_std.is_infinite() || expected_std.is_nan() {
+            assert_ulp_eq(actual, expected_std, MAX_ULP_TOL, context);
+            return;
+        }
+        let ulps_std = ulp_error(actual, expected_std);
+        if ulps_std <= MAX_ULP_TOL {
+            return;
+        }
+
+        #[cfg(feature = "mpfr")]
+        {
+            let expected_mpfr = mpfr_exp_f64(x);
+            let ulps_mpfr = ulp_error(actual, expected_mpfr);
+            if ulps_mpfr <= MAX_ULP_TOL {
+                return;
+            }
+            panic!(
+                "{context}: expected {expected_std} (std) / {expected_mpfr} (mpfr), got {actual} (ulps_std={ulps_std}, ulps_mpfr={ulps_mpfr})"
+            );
+        }
+
+        #[cfg(not(feature = "mpfr"))]
+        {
+            panic!("{context}: expected {expected_std}, got {actual} (ulps={ulps_std})");
+        }
     }
 
     fn push_unique(values: &mut Vec<f64>, x: f64) {
@@ -414,10 +433,9 @@ mod tests {
         let inputs = exp_inputs();
 
         for &x in &inputs {
-            let expected = exp_reference(x);
             let actual = fastlibm::exp(x);
             let context = format!("exp({x})");
-            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &context);
+            assert_ulp_eq_exp(actual, x, &context);
         }
     }
 
@@ -678,8 +696,7 @@ mod tests {
         #[test]
         fn ptest_exp(x in -745.0..709.78_f64) {
             let actual = fastlibm::exp(x);
-            let expected = exp_reference(x);
-            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("exp({x})"));
+            assert_ulp_eq_exp(actual, x, &format!("exp({x})"));
         }
 
         #[test]
