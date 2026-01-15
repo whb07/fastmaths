@@ -1,4 +1,12 @@
-use super::{f64_to_bits, floor_f64, hi_word, is_inf_bits, is_nan_bits, lo_word, scalbn, with_hi_lo};
+#![allow(
+    clippy::collapsible_if,
+    clippy::needless_late_init,
+    clippy::needless_range_loop
+)]
+
+use super::{
+    f64_to_bits, floor_f64, hi_word, is_inf_bits, is_nan_bits, lo_word, scalbn, with_hi_lo,
+};
 
 // ========= fdlibm/glibc-grade sin/cos =========
 //
@@ -8,29 +16,113 @@ use super::{f64_to_bits, floor_f64, hi_word, is_inf_bits, is_nan_bits, lo_word, 
 // - __kernel_sin / __kernel_cos (accurate kernels with tail)
 
 const TWO_OVER_PI: [u32; 66] = [
-    0xa2f983u32, 0x6e4e44u32, 0x1529fcu32, 0x2757d1u32, 0xf534ddu32, 0xc0db62u32, 0x95993cu32, 0x439041u32,
-    0xfe5163u32, 0xabdebbu32, 0xc561b7u32, 0x246e3au32, 0x424dd2u32, 0xe00649u32, 0x2eea09u32, 0xd1921cu32,
-    0xfe1debu32, 0x1cb129u32, 0xa73ee8u32, 0x8235f5u32, 0x2ebb44u32, 0x84e99cu32, 0x7026b4u32, 0x5f7e41u32,
-    0x3991d6u32, 0x398353u32, 0x39f49cu32, 0x845f8bu32, 0xbdf928u32, 0x3b1ff8u32, 0x97ffdeu32, 0x05980fu32,
-    0xef2f11u32, 0x8b5a0au32, 0x6d1f6du32, 0x367ecfu32, 0x27cb09u32, 0xb74f46u32, 0x3f669eu32, 0x5fea2du32,
-    0x7527bau32, 0xc7ebe5u32, 0xf17b3du32, 0x0739f7u32, 0x8a5292u32, 0xea6bfbu32, 0x5fb11fu32, 0x8d5d08u32,
-    0x560330u32, 0x46fc7bu32, 0x6babf0u32, 0xcfbc20u32, 0x9af436u32, 0x1da9e3u32, 0x91615eu32, 0xe61b08u32,
-    0x659985u32, 0x5f14a0u32, 0x68408du32, 0xffd880u32, 0x4d7327u32, 0x310606u32, 0x1556cau32, 0x73a8c9u32,
-    0x60e27bu32, 0xc08c6bu32,
+    0xa2f983u32,
+    0x6e4e44u32,
+    0x1529fcu32,
+    0x2757d1u32,
+    0xf534ddu32,
+    0xc0db62u32,
+    0x95993cu32,
+    0x439041u32,
+    0xfe5163u32,
+    0xabdebbu32,
+    0xc561b7u32,
+    0x246e3au32,
+    0x424dd2u32,
+    0xe00649u32,
+    0x2eea09u32,
+    0xd1921cu32,
+    0xfe1debu32,
+    0x1cb129u32,
+    0xa73ee8u32,
+    0x8235f5u32,
+    0x2ebb44u32,
+    0x84e99cu32,
+    0x7026b4u32,
+    0x5f7e41u32,
+    0x3991d6u32,
+    0x398353u32,
+    0x39f49cu32,
+    0x845f8bu32,
+    0xbdf928u32,
+    0x3b1ff8u32,
+    0x97ffdeu32,
+    0x05980fu32,
+    0xef2f11u32,
+    0x8b5a0au32,
+    0x6d1f6du32,
+    0x367ecfu32,
+    0x27cb09u32,
+    0xb74f46u32,
+    0x3f669eu32,
+    0x5fea2du32,
+    0x7527bau32,
+    0xc7ebe5u32,
+    0xf17b3du32,
+    0x0739f7u32,
+    0x8a5292u32,
+    0xea6bfbu32,
+    0x5fb11fu32,
+    0x8d5d08u32,
+    0x560330u32,
+    0x46fc7bu32,
+    0x6babf0u32,
+    0xcfbc20u32,
+    0x9af436u32,
+    0x1da9e3u32,
+    0x91615eu32,
+    0xe61b08u32,
+    0x659985u32,
+    0x5f14a0u32,
+    0x68408du32,
+    0xffd880u32,
+    0x4d7327u32,
+    0x310606u32,
+    0x1556cau32,
+    0x73a8c9u32,
+    0x60e27bu32,
+    0xc08c6bu32,
 ];
 
 const NPIO2_HW: [u32; 32] = [
-    0x3ff921fbu32, 0x400921fbu32, 0x4012d97cu32, 0x401921fbu32, 0x401f6a7au32, 0x4022d97cu32, 0x4025fdbbu32, 0x402921fbu32,
-    0x402c463au32, 0x402f6a7au32, 0x4031475cu32, 0x4032d97cu32, 0x40346b9cu32, 0x4035fdbbu32, 0x40378fdbu32, 0x403921fbu32,
-    0x403ab41bu32, 0x403c463au32, 0x403dd85au32, 0x403f6a7au32, 0x40407e4cu32, 0x4041475cu32, 0x4042106cu32, 0x4042d97cu32,
-    0x4043a28cu32, 0x40446b9cu32, 0x404534acu32, 0x4045fdbbu32, 0x4046c6cbu32, 0x40478fdbu32, 0x404858ebu32, 0x404921fbu32,
+    0x3ff921fbu32,
+    0x400921fbu32,
+    0x4012d97cu32,
+    0x401921fbu32,
+    0x401f6a7au32,
+    0x4022d97cu32,
+    0x4025fdbbu32,
+    0x402921fbu32,
+    0x402c463au32,
+    0x402f6a7au32,
+    0x4031475cu32,
+    0x4032d97cu32,
+    0x40346b9cu32,
+    0x4035fdbbu32,
+    0x40378fdbu32,
+    0x403921fbu32,
+    0x403ab41bu32,
+    0x403c463au32,
+    0x403dd85au32,
+    0x403f6a7au32,
+    0x40407e4cu32,
+    0x4041475cu32,
+    0x4042106cu32,
+    0x4042d97cu32,
+    0x4043a28cu32,
+    0x40446b9cu32,
+    0x404534acu32,
+    0x4045fdbbu32,
+    0x4046c6cbu32,
+    0x40478fdbu32,
+    0x404858ebu32,
+    0x404921fbu32,
 ];
 
 // invpio2: 53 bits of 2/pi, and split pi/2 pieces (fdlibm)
-const ZERO: f64 = 0.0;
 const HALF: f64 = 5.00000000000000000000e-01;
 const TWO24: f64 = 1.67772160000000000000e+07; // 2^24
-const INVPIO2: f64 = 6.36619772367581382433e-01; // 0x3FE45F306DC9C883
+const INVPIO2: f64 = f64::from_bits(0x3fe4_5f30_6dc9_c883);
 
 const PIO2_1: f64 = 1.57079632673412561417e+00; // 0x3FF921FB54400000
 const PIO2_1T: f64 = 6.07710050650619224932e-11; // 0x3DD0B4611A626331
@@ -61,7 +153,9 @@ const C6: f64 = -1.13596475577881948265e-11;
 fn kernel_sin(x: f64, y: f64, iy: i32) -> f64 {
     let ix = hi_word(x) & 0x7fff_ffff;
     if ix < 0x3e40_0000 {
-        if (x as i32) == 0 { return x; }
+        if (x as i32) == 0 {
+            return x;
+        }
     }
     let z = x * x;
     let v = z * x;
@@ -77,7 +171,9 @@ fn kernel_sin(x: f64, y: f64, iy: i32) -> f64 {
 fn kernel_cos(x: f64, y: f64) -> f64 {
     let ix = hi_word(x) & 0x7fff_ffff;
     if ix < 0x3e40_0000 {
-        if (x as i32) == 0 { return KC_ONE; }
+        if (x as i32) == 0 {
+            return KC_ONE;
+        }
     }
     let z = x * x;
     let r = z * (C1 + z * (C2 + z * (C3 + z * (C4 + z * (C5 + z * C6)))));
@@ -122,12 +218,14 @@ fn kernel_rem_pio2(x: &[f64; 3], y: &mut [f64; 2], e0: i32, nx: i32, prec: i32) 
     let mut fq = [0f64; 20];
     let mut q = [0f64; 20];
 
-    let mut jk = INIT_JK[prec as usize];
+    let jk = INIT_JK[prec as usize];
     let jp = jk;
 
     let jx = nx - 1;
     let mut jv = (e0 - 3) / 24;
-    if jv < 0 { jv = 0; }
+    if jv < 0 {
+        jv = 0;
+    }
     let mut q0 = e0 - 24 * (jv + 1);
 
     let mut j = jv - jx;
@@ -135,7 +233,11 @@ fn kernel_rem_pio2(x: &[f64; 3], y: &mut [f64; 2], e0: i32, nx: i32, prec: i32) 
     let jx_us = jx as usize;
 
     for i in 0..=(m as usize) {
-        f[i] = if j < 0 { KR_ZERO } else { TWO_OVER_PI[j as usize] as f64 };
+        f[i] = if j < 0 {
+            KR_ZERO
+        } else {
+            TWO_OVER_PI[j as usize] as f64
+        };
         j += 1;
     }
 
@@ -218,7 +320,9 @@ fn kernel_rem_pio2(x: &[f64; 3], y: &mut [f64; 2], e0: i32, nx: i32, prec: i32) 
             if jacc == 0 {
                 // need recomputation
                 let mut k = 1;
-                while iq[(jk - k) as usize] == 0 { k += 1; }
+                while iq[(jk - k) as usize] == 0 {
+                    k += 1;
+                }
                 for ii in (jz + 1)..=(jz + k) {
                     let idx = (jv + ii) as usize;
                     f[(jx + ii) as usize] = TWO_OVER_PI[idx] as f64;
@@ -269,7 +373,7 @@ fn kernel_rem_pio2(x: &[f64; 3], y: &mut [f64; 2], e0: i32, nx: i32, prec: i32) 
                 fw2 += PIO2_CHUNKS[k] * q[i + k];
                 k += 1;
             }
-            fq[(jz as usize - i)] = fw2;
+            fq[jz as usize - i] = fw2;
         }
 
         // compress fq into y (prec 2 -> 2 terms)
@@ -376,12 +480,11 @@ fn rem_pio2(x: f64) -> (i32, f64, f64) {
         return (0, f64::NAN, f64::NAN);
     }
 
-    let mut z = with_hi_lo(ix, lo_word(x));
     let e0 = ((ix >> 20) as i32) - 1046; // ilogb(z)-23
 
     // set exponent so z is scaled
     let hi = ix - ((e0 as u32) << 20);
-    z = with_hi_lo(hi, lo_word(x));
+    let mut z = with_hi_lo(hi, lo_word(x));
 
     let mut tx = [0.0f64; 3];
     for i in 0..2 {
@@ -410,10 +513,12 @@ fn rem_pio2(x: f64) -> (i32, f64, f64) {
 #[inline(always)]
 pub(super) fn sin(x: f64) -> f64 {
     let ux = f64_to_bits(x);
-    if is_nan_bits(ux) || is_inf_bits(ux) { return f64::NAN; }
+    if is_nan_bits(ux) || is_inf_bits(ux) {
+        return f64::NAN;
+    }
 
     let (n, y0, y1) = rem_pio2(x);
-    match (n & 3) {
+    match n & 3 {
         0 => kernel_sin(y0, y1, 1),
         1 => kernel_cos(y0, y1),
         2 => -kernel_sin(y0, y1, 1),
@@ -424,10 +529,12 @@ pub(super) fn sin(x: f64) -> f64 {
 #[inline(always)]
 pub(super) fn cos(x: f64) -> f64 {
     let ux = f64_to_bits(x);
-    if is_nan_bits(ux) || is_inf_bits(ux) { return f64::NAN; }
+    if is_nan_bits(ux) || is_inf_bits(ux) {
+        return f64::NAN;
+    }
 
     let (n, y0, y1) = rem_pio2(x);
-    match (n & 3) {
+    match n & 3 {
         0 => kernel_cos(y0, y1),
         1 => -kernel_sin(y0, y1, 1),
         2 => -kernel_cos(y0, y1),

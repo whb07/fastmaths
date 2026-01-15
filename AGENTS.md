@@ -28,8 +28,10 @@ This crate aims to implement **fast, correct** replacements for glibc `libm` rou
 ## Benchmarking & glibc Inspection Tools
 
 - Use **Criterion** to validate wins and catch regressions: compare `fastlibm::*` against `f64::{exp,ln,sin,cos}`.
-- When debugging parity/perf vs glibc, inspect the system `libm.so.6` with:
-  - `nm -D /path/to/libm.so.6 | rg ' (exp|log|sin|cos)$'` (symbol discovery)
+- For building a reference glibc with AVX/FMA optimizations, use:
+    - `./build_libm.sh` (builds libm from source with `-march=native`)
+- When debugging parity/perf vs glibc, inspect the system `libm.so.6` or the newly built one with:
+    - `nm -D /path/to/libm.so.6 | rg ' (exp|log|sin|cos)$'` (symbol discovery)
   - `objdump -d -C /path/to/libm.so.6` (assembly inspection)
 - Keep investigation notes in `MATHS_GLIBC*.md`.
 
