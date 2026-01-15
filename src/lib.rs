@@ -11,11 +11,11 @@ pub use maths::fastlibm;
 mod tests {
     use super::fastlibm;
     use libloading::Library;
-    use std::{eprintln, format};
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, FRAC_PI_6, PI, TAU};
     use std::path::Path;
     use std::string::String;
     use std::vec::Vec;
+    use std::{eprintln, format};
 
     const MAX_ULP_TOL: f64 = 0.6;
 
@@ -26,7 +26,11 @@ mod tests {
         if x.is_nan() || x.is_infinite() {
             return f64::NAN;
         }
-        let next = if x.is_sign_negative() { x.next_down() } else { x.next_up() };
+        let next = if x.is_sign_negative() {
+            x.next_down()
+        } else {
+            x.next_up()
+        };
         (next - x).abs()
     }
 
@@ -400,8 +404,18 @@ mod tests {
             let (sin_actual, cos_actual) = fastlibm::sincos(x);
             let sin_expected = x.sin();
             let cos_expected = x.cos();
-            assert_ulp_eq(sin_actual, sin_expected, MAX_ULP_TOL, &format!("sincos sin({x})"));
-            assert_ulp_eq(cos_actual, cos_expected, MAX_ULP_TOL, &format!("sincos cos({x})"));
+            assert_ulp_eq(
+                sin_actual,
+                sin_expected,
+                MAX_ULP_TOL,
+                &format!("sincos sin({x})"),
+            );
+            assert_ulp_eq(
+                cos_actual,
+                cos_expected,
+                MAX_ULP_TOL,
+                &format!("sincos cos({x})"),
+            );
         }
     }
 
@@ -417,8 +431,18 @@ mod tests {
             let cos_pos = fastlibm::cos(x);
             let cos_neg = fastlibm::cos(-x);
 
-            assert_ulp_eq(sin_neg, -sin_pos, MAX_ULP_TOL, &format!("sin symmetry at {x}"));
-            assert_ulp_eq(cos_neg, cos_pos, MAX_ULP_TOL, &format!("cos symmetry at {x}"));
+            assert_ulp_eq(
+                sin_neg,
+                -sin_pos,
+                MAX_ULP_TOL,
+                &format!("sin symmetry at {x}"),
+            );
+            assert_ulp_eq(
+                cos_neg,
+                cos_pos,
+                MAX_ULP_TOL,
+                &format!("cos symmetry at {x}"),
+            );
         }
     }
 
@@ -472,8 +496,106 @@ mod tests {
             let cos_expected = unsafe { cos(x) };
             let sin_actual = fastlibm::sin(x);
             let cos_actual = fastlibm::cos(x);
-            assert_ulp_eq_glibc(sin_actual, sin_expected, MAX_ULP_TOL, &format!("glibc sin({x})"));
-            assert_ulp_eq_glibc(cos_actual, cos_expected, MAX_ULP_TOL, &format!("glibc cos({x})"));
+            assert_ulp_eq_glibc(
+                sin_actual,
+                sin_expected,
+                MAX_ULP_TOL,
+                &format!("glibc sin({x})"),
+            );
+            assert_ulp_eq_glibc(
+                cos_actual,
+                cos_expected,
+                MAX_ULP_TOL,
+                &format!("glibc cos({x})"),
+            );
+        }
+    }
+
+    #[test]
+    fn compare_glibc_fastlibm() {
+        let Some(path) = glibc_libm_path() else {
+            return;
+        };
+        let lib = unsafe { Library::new(&path).expect("load glibc libm") };
+        unsafe {
+            let g_exp: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+                lib.get(b"exp").unwrap();
+            let g_log: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+                lib.get(b"log").unwrap();
+            let g_sin: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+                lib.get(b"sin").unwrap();
+            let g_cos: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+                lib.get(b"cos").unwrap();
+
+            let test_inputs = [1.0, 2.0, PI, 1e10, -6.5684415251369026e19, 0.0, -0.0];
+
+            std::println!("| Input | Func | glibc (bits) | fastlibm (bits) | ULP Delta |");
+            std::println!("| :--- | :--- | :--- | :--- | :--- |");
+            for &x in &test_inputs {
+                type CFn = unsafe extern "C" fn(f64) -> f64;
+                type RustFn = fn(f64) -> f64;
+                type FnSpec = (&'static str, CFn, RustFn);
+
+                let fns: [FnSpec; 4] = [
+                    ("exp", *g_exp, fastlibm::exp),
+                    ("log", *g_log, fastlibm::ln),
+                    ("sin", *g_sin, fastlibm::sin),
+                    ("cos", *g_cos, fastlibm::cos),
+                ];
+                for (name, gf, ff) in fns {
+                    let gv = gf(x);
+                    let fv = ff(x);
+                    let delta = ulp_error(fv, gv);
+                    std::println!(
+                        "| {:e} | {} | {:016x} | {:016x} | {:.4} |",
+                        x,
+                        name,
+                        gv.to_bits(),
+                        fv.to_bits(),
+                        delta
+                    );
+                }
+            }
+        }
+    }
+
+    use proptest::prelude::*;
+    proptest! {
+        #[test]
+        fn ptest_exp(x in -745.0..709.78_f64) {
+            let actual = fastlibm::exp(x);
+            let expected = x.exp();
+            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("exp({x})"));
+        }
+
+        #[test]
+        fn ptest_ln(x in proptest::num::f64::POSITIVE) {
+            if x.is_finite() && x > 0.0 {
+                let actual = fastlibm::ln(x);
+                let expected = x.ln();
+                assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("ln({x})"));
+            }
+        }
+
+        #[test]
+        fn ptest_sin(x in -1e20..1e20_f64) {
+            let actual = fastlibm::sin(x);
+            let expected = x.sin();
+            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("sin({x})"));
+        }
+
+        #[test]
+        fn ptest_cos(x in -1e20..1e20_f64) {
+            let actual = fastlibm::cos(x);
+            let expected = x.cos();
+            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("cos({x})"));
+        }
+
+        #[test]
+        fn ptest_sincos(x in -1e20..1e20_f64) {
+            let (s_actual, c_actual) = fastlibm::sincos(x);
+            assert_ulp_eq(s_actual, x.sin(), MAX_ULP_TOL, &format!("sincos sin({x})"));
+            assert_ulp_eq(c_actual, x.cos(), MAX_ULP_TOL, &format!("sincos cos({x})"));
         }
     }
 }

@@ -6,8 +6,8 @@
 mod cos;
 mod exp;
 mod log;
-mod sincos_tab;
 mod sin;
+mod sincos_tab;
 mod trig;
 
 pub use cos::cos;
@@ -17,6 +17,8 @@ pub use sin::sin;
 pub use trig::sincos;
 
 // ========= bit helpers =========
+
+use core::sync::atomic::{AtomicU8, Ordering};
 
 #[inline(always)]
 fn f64_from_bits(u: u64) -> f64 {
@@ -48,6 +50,30 @@ fn fma(a: f64, b: f64, c: f64) -> f64 {
 )))]
 fn fma(a: f64, b: f64, c: f64) -> f64 {
     a * b + c
+}
+
+// Runtime CPU feature detection (no-std friendly).
+// Cached to avoid CPUID on every call (CPUID is very expensive and serializing).
+#[inline(always)]
+fn cpu_has_fma() -> bool {
+    #[cfg(target_arch = "x86_64")]
+    {
+        static HAS_FMA: AtomicU8 = AtomicU8::new(0); // 0=unknown, 1=no, 2=yes
+        match HAS_FMA.load(Ordering::Relaxed) {
+            1 => false,
+            2 => true,
+            _ => {
+                let r = unsafe { core::arch::x86_64::__cpuid(1) };
+                let has = (r.ecx & (1 << 12)) != 0;
+                HAS_FMA.store(if has { 2 } else { 1 }, Ordering::Relaxed);
+                has
+            }
+        }
+    }
+    #[cfg(not(target_arch = "x86_64"))]
+    {
+        false
+    }
 }
 
 #[inline(always)]

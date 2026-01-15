@@ -137,7 +137,7 @@ fn bench_only() -> Option<String> {
         }
     }
 
-    let mut iter = std::env::args().skip(1);
+    let mut iter = std::env::args().skip(1).peekable();
     while let Some(arg) = iter.next() {
         if arg == "--only" {
             if let Some(value) = iter.next() {
@@ -146,7 +146,32 @@ fn bench_only() -> Option<String> {
                     return Some(value);
                 }
             }
-        } else if !arg.starts_with('-') {
+            continue;
+        }
+
+        // Ignore Criterion CLI options that take a value so their value doesn't get
+        // misinterpreted as a positional filter (e.g. `--sample-size 50`).
+        match arg.as_str() {
+            "--sample-size"
+            | "--warm-up-time"
+            | "--measurement-time"
+            | "--nresamples"
+            | "--noise-threshold"
+            | "--significance-level"
+            | "--confidence-level"
+            | "--plotting-backend"
+            | "--output-directory"
+            | "--baseline"
+            | "--save-baseline"
+            | "--load-baseline"
+            | "--filter" => {
+                let _ = iter.next();
+                continue;
+            }
+            _ => {}
+        }
+
+        if !arg.starts_with('-') {
             return Some(arg.trim().to_lowercase());
         }
     }
@@ -226,7 +251,12 @@ fn bench_sin(c: &mut Criterion) {
         1e6,
         -1e6,
     ];
-    let common = gen_range(1024, -2.0 * std::f64::consts::PI, 2.0 * std::f64::consts::PI, 0x1357);
+    let common = gen_range(
+        1024,
+        -2.0 * std::f64::consts::PI,
+        2.0 * std::f64::consts::PI,
+        0x1357,
+    );
     let medium = gen_range(1024, -1e6, 1e6, 0x2468);
     let huge = gen_range(1024, -1e20, 1e20, 0x9abc);
 
@@ -255,7 +285,12 @@ fn bench_cos(c: &mut Criterion) {
         1e6,
         -1e6,
     ];
-    let common = gen_range(1024, -2.0 * std::f64::consts::PI, 2.0 * std::f64::consts::PI, 0x1357);
+    let common = gen_range(
+        1024,
+        -2.0 * std::f64::consts::PI,
+        2.0 * std::f64::consts::PI,
+        0x1357,
+    );
     let medium = gen_range(1024, -1e6, 1e6, 0x2468);
     let huge = gen_range(1024, -1e20, 1e20, 0x9abc);
 

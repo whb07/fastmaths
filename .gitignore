@@ -1,1 +1,8 @@
 /target
+/proptest-regressions
+results.txt
+glibc
+gen_glibc.rs
+glibc_values.txt
+
+bench_latest.txt

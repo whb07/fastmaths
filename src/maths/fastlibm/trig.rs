@@ -5,8 +5,8 @@
     dead_code
 )]
 
-use super::{floor_f64, hi_word, lo_word, scalbn, with_hi_lo};
 use super::sincos_tab::SINCOS_TAB;
+use super::{floor_f64, hi_word, lo_word, scalbn, with_hi_lo};
 
 // ========= fdlibm/glibc-grade sin/cos =========
 //
@@ -171,7 +171,8 @@ const IBM_PP3: f64 = f64::from_bits(0xbc8c_b3b3_9800_0000);
 const IBM_PP4: f64 = f64::from_bits(0xbacd_747f_23e3_2ed7);
 const IBM_HPINV: f64 = f64::from_bits(0x3fe4_5f30_6dc9_c883);
 const IBM_TOINT: f64 = f64::from_bits(0x4338_0000_0000_0000);
-const IBM_SPLIT: f64 = f64::from_bits(0x41a0_0000_0100_0000); // 2^27 + 1
+// 2^27 + 1 (exact). Used by branred.c to split x into two numbers.
+const IBM_SPLIT: f64 = f64::from_bits(0x41a0_0000_0200_0000);
 
 const BR_T576: f64 = f64::from_bits(0x63f0_0000_0000_0000);
 const BR_TM600: f64 = f64::from_bits(0x1a70_0000_0000_0000);
@@ -181,18 +182,15 @@ const BR_BIG1: f64 = f64::from_bits(0x4358_0000_0000_0000);
 const BR_MP2: f64 = f64::from_bits(0xbe4d_de97_4000_0000);
 
 const TOVERP: [f64; 75] = [
-    10680707.0, 7228996.0, 1387004.0, 2578385.0, 16069853.0, 12639074.0,
-    9804092.0, 4427841.0, 16666979.0, 11263675.0, 12935607.0, 2387514.0,
-    4345298.0, 14681673.0, 3074569.0, 13734428.0, 16653803.0, 1880361.0,
-    10960616.0, 8533493.0, 3062596.0, 8710556.0, 7349940.0, 6258241.0,
-    3772886.0, 3769171.0, 3798172.0, 8675211.0, 12450088.0, 3874808.0,
-    9961438.0, 366607.0, 15675153.0, 9132554.0, 7151469.0, 3571407.0,
-    2607881.0, 12013382.0, 4155038.0, 6285869.0, 7677882.0, 13102053.0,
-    15825725.0, 473591.0, 9065106.0, 15363067.0, 6271263.0, 9264392.0,
-    5636912.0, 4652155.0, 7056368.0, 13614112.0, 10155062.0, 1944035.0,
-    9527646.0, 15080200.0, 6658437.0, 6231200.0, 6832269.0, 16767104.0,
-    5075751.0, 3212806.0, 1398474.0, 7579849.0, 6349435.0, 12618859.0,
-    4703257.0, 12806093.0, 14477321.0, 2786137.0, 12875403.0, 9837734.0,
+    10680707.0, 7228996.0, 1387004.0, 2578385.0, 16069853.0, 12639074.0, 9804092.0, 4427841.0,
+    16666979.0, 11263675.0, 12935607.0, 2387514.0, 4345298.0, 14681673.0, 3074569.0, 13734428.0,
+    16653803.0, 1880361.0, 10960616.0, 8533493.0, 3062596.0, 8710556.0, 7349940.0, 6258241.0,
+    3772886.0, 3769171.0, 3798172.0, 8675211.0, 12450088.0, 3874808.0, 9961438.0, 366607.0,
+    15675153.0, 9132554.0, 7151469.0, 3571407.0, 2607881.0, 12013382.0, 4155038.0, 6285869.0,
+    7677882.0, 13102053.0, 15825725.0, 473591.0, 9065106.0, 15363067.0, 6271263.0, 9264392.0,
+    5636912.0, 4652155.0, 7056368.0, 13614112.0, 10155062.0, 1944035.0, 9527646.0, 15080200.0,
+    6658437.0, 6231200.0, 6832269.0, 16767104.0, 5075751.0, 3212806.0, 1398474.0, 7579849.0,
+    6349435.0, 12618859.0, 4703257.0, 12806093.0, 14477321.0, 2786137.0, 12875403.0, 9837734.0,
     14528324.0, 13719321.0, 343717.0,
 ];
 
@@ -614,12 +612,109 @@ fn do_sin(mut x: f64, mut dx: f64) -> f64 {
     if xold.is_sign_negative() { -res } else { res }
 }
 
+// ---- FMA-specialized do_sin/do_cos (for glibc-like ifunc parity) ----
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn fma_f64(a: f64, b: f64, c: f64) -> f64 {
+    use core::arch::x86_64::{_mm_cvtsd_f64, _mm_fmadd_sd, _mm_set_sd};
+    _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(a), _mm_set_sd(b), _mm_set_sd(c)))
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn do_cos_fma(mut x: f64, mut dx: f64) -> f64 {
+    if x < 0.0 {
+        dx = -dx;
+    }
+    let absx = x.abs();
+    let u = IBM_BIG + absx;
+    x = absx - (u - IBM_BIG) + dx;
+
+    let xx = x * x;
+    let t = unsafe { fma_f64(xx, IBM_SN5, IBM_SN3) };
+    let s = unsafe { fma_f64(x * xx, t, x) };
+    let t = unsafe { fma_f64(xx, IBM_CS6, IBM_CS4) };
+    let t = unsafe { fma_f64(xx, t, IBM_CS2) };
+    let c = xx * t;
+
+    let (sn, ssn, cs, ccs) = sincos_table_lookup(u);
+    let cor = unsafe { fma_f64(-sn, s, fma_f64(-cs, c, fma_f64(-s, ssn, ccs))) };
+    cs + cor
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn do_sin_fma(mut x: f64, mut dx: f64) -> f64 {
+    let xold = x;
+    if x.abs() < 0.126 {
+        let xx = x * x;
+        let poly = unsafe {
+            fma_f64(
+                fma_f64(fma_f64(fma_f64(IBM_S5, xx, IBM_S4), xx, IBM_S3), xx, IBM_S2),
+                xx,
+                IBM_S1,
+            )
+        };
+        let t = unsafe { fma_f64(fma_f64(poly, x, -0.5 * dx), xx, dx) };
+        return x + t;
+    }
+    if x <= 0.0 {
+        dx = -dx;
+    }
+    let absx = x.abs();
+    let u = IBM_BIG + absx;
+    x = absx - (u - IBM_BIG);
+
+    let xx = x * x;
+    let t = unsafe { fma_f64(xx, IBM_SN5, IBM_SN3) };
+    let s = x + unsafe { fma_f64(x * xx, t, dx) };
+
+    let t = unsafe { fma_f64(xx, IBM_CS6, IBM_CS4) };
+    let t = unsafe { fma_f64(xx, t, IBM_CS2) };
+    let v = xx * t;
+    let c = unsafe { fma_f64(x, dx, v) };
+
+    let (sn, ssn, cs, ccs) = sincos_table_lookup(u);
+    let cor = unsafe { fma_f64(cs, s, fma_f64(-sn, c, fma_f64(s, ccs, ssn))) };
+    let res = sn + cor;
+    if xold.is_sign_negative() { -res } else { res }
+}
+
+#[cfg(not(target_arch = "x86_64"))]
+#[inline(always)]
+unsafe fn do_cos_fma(x: f64, dx: f64) -> f64 {
+    let _ = (x, dx);
+    unreachable!()
+}
+
+#[cfg(not(target_arch = "x86_64"))]
+#[inline(always)]
+unsafe fn do_sin_fma(x: f64, dx: f64) -> f64 {
+    let _ = (x, dx);
+    unreachable!()
+}
+
 #[inline(always)]
 fn do_sincos(a: f64, da: f64, n: i32) -> f64 {
     let mut retval = if (n & 1) != 0 {
         do_cos(a, da)
     } else {
         do_sin(a, da)
+    };
+    if (n & 2) != 0 {
+        retval = -retval;
+    }
+    retval
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn do_sincos_fma(a: f64, da: f64, n: i32) -> f64 {
+    let mut retval = if (n & 1) != 0 {
+        unsafe { do_cos_fma(a, da) }
+    } else {
+        unsafe { do_sin_fma(a, da) }
     };
     if (n & 2) != 0 {
         retval = -retval;
@@ -687,7 +782,7 @@ fn branred(x: f64) -> (i32, f64, f64) {
     sum += s;
     t -= s;
     let mut b = t + bb;
-    bb = (t - b) + bb;
+    bb += t - b;
     let s = (sum + BR_BIG1) - BR_BIG1;
     sum -= s;
 
@@ -719,7 +814,7 @@ fn branred(x: f64) -> (i32, f64, f64) {
     sum += s;
     t -= s;
     b = t + bb;
-    bb = (t - b) + bb;
+    bb += t - b;
     let s = (sum + BR_BIG1) - BR_BIG1;
     sum -= s;
 
@@ -758,7 +853,7 @@ fn branred(x: f64) -> (i32, f64, f64) {
 }
 
 #[inline(always)]
-pub(super) fn sin(x: f64) -> f64 {
+fn sin_generic(x: f64) -> f64 {
     let k = hi_word(x) & 0x7fff_ffff;
     if k < 0x3e50_0000 {
         return x;
@@ -779,11 +874,48 @@ pub(super) fn sin(x: f64) -> f64 {
         let (n, a, da) = branred(x);
         return do_sincos(a, da, n);
     }
-    x / x
+    x * 0.0
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn sin_fma(x: f64) -> f64 {
+    let k = hi_word(x) & 0x7fff_ffff;
+    if k < 0x3e50_0000 {
+        return x;
+    }
+    if k < 0x3feb_6000 {
+        return unsafe { do_sin_fma(x, 0.0) };
+    }
+    if k < 0x4003_68fd {
+        let t = IBM_HP0 - x.abs();
+        let v = unsafe { do_cos_fma(t, IBM_HP1) };
+        return if x.is_sign_negative() { -v } else { v };
+    }
+    if k < 0x4199_21fb {
+        let (n, a, da) = reduce_sincos(x);
+        return unsafe { do_sincos_fma(a, da, n) };
+    }
+    if k < 0x7ff0_0000 {
+        let (n, a, da) = branred(x);
+        return unsafe { do_sincos_fma(a, da, n) };
+    }
+    x * 0.0
 }
 
 #[inline(always)]
-pub(super) fn cos(x: f64) -> f64 {
+pub(super) fn sin(x: f64) -> f64 {
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        if super::cpu_has_fma() {
+            return sin_fma(x);
+        }
+    }
+    sin_generic(x)
+}
+
+#[inline(always)]
+fn cos_generic(x: f64) -> f64 {
     let k = hi_word(x) & 0x7fff_ffff;
     if k < 0x3e40_0000 {
         return 1.0;
@@ -805,11 +937,49 @@ pub(super) fn cos(x: f64) -> f64 {
         let (n, a, da) = branred(x);
         return do_sincos(a, da, n + 1);
     }
-    x / x
+    x * 0.0
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn cos_fma(x: f64) -> f64 {
+    let k = hi_word(x) & 0x7fff_ffff;
+    if k < 0x3e40_0000 {
+        return 1.0;
+    }
+    if k < 0x3feb_6000 {
+        return unsafe { do_cos_fma(x, 0.0) };
+    }
+    if k < 0x4003_68fd {
+        let y = IBM_HP0 - x.abs();
+        let a = y + IBM_HP1;
+        let da = (y - a) + IBM_HP1;
+        return unsafe { do_sin_fma(a, da) };
+    }
+    if k < 0x4199_21fb {
+        let (n, a, da) = reduce_sincos(x);
+        return unsafe { do_sincos_fma(a, da, n + 1) };
+    }
+    if k < 0x7ff0_0000 {
+        let (n, a, da) = branred(x);
+        return unsafe { do_sincos_fma(a, da, n + 1) };
+    }
+    x * 0.0
 }
 
 #[inline(always)]
-pub fn sincos(x: f64) -> (f64, f64) {
+pub(super) fn cos(x: f64) -> f64 {
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        if super::cpu_has_fma() {
+            return cos_fma(x);
+        }
+    }
+    cos_generic(x)
+}
+
+#[inline(always)]
+fn sincos_generic(x: f64) -> (f64, f64) {
     let k = hi_word(x) & 0x7fff_ffff;
     if k < 0x3e40_0000 {
         return (x, 1.0);
@@ -837,8 +1007,57 @@ pub fn sincos(x: f64) -> (f64, f64) {
         let (n, a, da) = branred(x);
         return (do_sincos(a, da, n), do_sincos(a, da, n + 1));
     }
-    let nan = x / x;
+    let nan = x * 0.0;
     (nan, nan)
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn sincos_fma(x: f64) -> (f64, f64) {
+    let k = hi_word(x) & 0x7fff_ffff;
+    if k < 0x3e40_0000 {
+        return (x, 1.0);
+    }
+    if k < 0x3e50_0000 {
+        return (x, 1.0);
+    }
+    if k < 0x3feb_6000 {
+        return (unsafe { do_sin_fma(x, 0.0) }, unsafe { do_cos_fma(x, 0.0) });
+    }
+    if k < 0x4003_68fd {
+        let t = IBM_HP0 - x.abs();
+        let sin_v = unsafe { do_cos_fma(t, IBM_HP1) };
+        let sin_v = if x.is_sign_negative() { -sin_v } else { sin_v };
+        let a = t + IBM_HP1;
+        let da = (t - a) + IBM_HP1;
+        let cos_v = unsafe { do_sin_fma(a, da) };
+        return (sin_v, cos_v);
+    }
+    if k < 0x4199_21fb {
+        let (n, a, da) = reduce_sincos(x);
+        return (unsafe { do_sincos_fma(a, da, n) }, unsafe {
+            do_sincos_fma(a, da, n + 1)
+        });
+    }
+    if k < 0x7ff0_0000 {
+        let (n, a, da) = branred(x);
+        return (unsafe { do_sincos_fma(a, da, n) }, unsafe {
+            do_sincos_fma(a, da, n + 1)
+        });
+    }
+    let nan = x * 0.0;
+    (nan, nan)
+}
+
+#[inline(always)]
+pub fn sincos(x: f64) -> (f64, f64) {
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        if super::cpu_has_fma() {
+            return sincos_fma(x);
+        }
+    }
+    sincos_generic(x)
 }
 
 #[cfg(test)]
