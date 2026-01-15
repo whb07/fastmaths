@@ -510,6 +510,25 @@ fn rem_pio2(x: f64) -> (i32, f64, f64) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sin_cos_identity() {
+        for i in 0..1000 {
+            let x = (i as f64) * 0.1;
+            let s = sin(x);
+            let c = cos(x);
+            let identity = s * s + c * c;
+            assert!(
+                (identity - 1.0).abs() < 1e-15,
+                "Identity failed for x={x}: got {identity}"
+            );
+        }
+    }
+}
+
 #[inline(always)]
 pub(super) fn sin(x: f64) -> f64 {
     let ux = f64_to_bits(x);

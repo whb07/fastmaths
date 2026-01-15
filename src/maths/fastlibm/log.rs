@@ -356,3 +356,45 @@ pub fn ln(x: f64) -> f64 {
     let r2 = r * r;
     lo + r2 * LOG_A0 + r * r2 * (LOG_A1 + r * LOG_A2 + r2 * (LOG_A3 + r * LOG_A4)) + hi
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ln_near_one() {
+        let values = [
+            0.9375, // LO boundary
+            0.94, 0.99, 1.0, 1.01, 1.06, 1.0625, // Near HI boundary
+        ];
+        for &x in &values {
+            let actual = ln(x);
+            let expected = x.ln();
+            let diff = (actual - expected).abs();
+            assert!(
+                diff < 1e-15,
+                "ln({x}) failed: got {actual}, expected {expected}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_ln_table_boundaries() {
+        // Test values that cross table indices
+        for i in 0..127 {
+            let tmp = (i as u64) << (52 - LOG_TABLE_BITS);
+            let ix = tmp + OFF;
+            let x = f64_from_bits(ix);
+            let actual = ln(x);
+            let expected = x.ln();
+            let diff = (actual - expected).abs();
+            assert!(diff < 1e-15, "ln({x}) at index {i} failed");
+
+            // Just above boundary
+            let x_plus = f64_from_bits(ix + 1);
+            let actual_plus = ln(x_plus);
+            let expected_plus = x_plus.ln();
+            assert!((actual_plus - expected_plus).abs() < 1e-15);
+        }
+    }
+}

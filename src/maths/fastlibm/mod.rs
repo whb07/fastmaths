@@ -129,3 +129,46 @@ fn floor_f64(x: f64) -> f64 {
     }
     f64_from_bits(ui)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_floor() {
+        let values = [
+            0.0, -0.0, 0.1, -0.1, 0.9, -0.9, 1.0, -1.0, 1.1, -1.1, 1.9, -1.9, 2.0, -2.0, 1e15,
+            -1e15, 1e20, -1e20,
+        ];
+        for &x in &values {
+            assert_eq!(floor_f64(x), x.floor(), "floor_f64({x}) failed");
+        }
+    }
+
+    #[test]
+    fn test_scalbn() {
+        let values = [
+            (1.0, 1),
+            (1.0, -1),
+            (1.0, 10),
+            (1.0, -10),
+            (std::f64::consts::PI, 5),
+            (std::f64::consts::PI, -5),
+            (1e-300, 10),
+            (1e-300, -10),
+        ];
+        for &(x, n) in &values {
+            let actual = scalbn(x, n);
+            let expected = x * 2.0f64.powi(n);
+            let diff = (actual - expected).abs();
+            if expected != 0.0 {
+                assert!(
+                    diff / expected.abs() < 1e-15,
+                    "scalbn({x}, {n}) failed: got {actual}, expected {expected}"
+                );
+            } else {
+                assert_eq!(actual, 0.0);
+            }
+        }
+    }
+}

@@ -341,3 +341,47 @@ pub fn exp(x: f64) -> f64 {
     }
     scale + scale * tmp
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_exp_near_limits() {
+        let values = [EXP_HI, EXP_HI - 1e-10, EXP_LO, EXP_LO + 1e-10];
+        for &x in &values {
+            let actual = exp(x);
+            let expected = x.exp();
+            if expected.is_infinite() {
+                assert!(actual.is_infinite());
+            } else {
+                let diff = (actual - expected).abs();
+                let rel_diff = diff / expected;
+                assert!(
+                    rel_diff < 1e-15,
+                    "exp({x}) failed: got {actual}, expected {expected}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_exp_subnormals() {
+        // Values that result in subnormal outputs
+        // e^x < 2^-1022 => x < -708.396...
+        for i in 0..100 {
+            let x = -708.4 - (i as f64) * 0.1;
+            if x < EXP_LO {
+                break;
+            }
+            let actual = exp(x);
+            let expected = x.exp();
+            let diff = (actual - expected).abs();
+            // For subnormals, absolute difference is more appropriate as relative diff can be large
+            assert!(
+                diff < 1e-300,
+                "exp({x}) subnormal failed: got {actual}, expected {expected}"
+            );
+        }
+    }
+}
