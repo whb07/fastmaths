@@ -22,6 +22,8 @@ mod tests {
     const MAX_ULP_TOL: f64 = 0.6;
     #[cfg(feature = "mpfr")]
     const MPFR_PREC: u32 = 256;
+    #[cfg(feature = "mpfr")]
+    const MPFR_TRIG_LIMIT: f64 = 1.0e6;
 
     fn ulp_size(x: f64) -> f64 {
         if x == 0.0 {
@@ -58,6 +60,27 @@ mod tests {
     }
 
     #[cfg(feature = "mpfr")]
+    fn mpfr_ln_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.ln_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_sin_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.sin_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_cos_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.cos_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
     fn exp_reference(x: f64) -> f64 {
         mpfr_exp_f64(x)
     }
@@ -65,6 +88,44 @@ mod tests {
     #[cfg(not(feature = "mpfr"))]
     fn exp_reference(x: f64) -> f64 {
         x.exp()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn ln_reference(x: f64) -> f64 {
+        mpfr_ln_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn ln_reference(x: f64) -> f64 {
+        x.ln()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn sin_reference(x: f64) -> f64 {
+        if x.abs() <= MPFR_TRIG_LIMIT {
+            mpfr_sin_f64(x)
+        } else {
+            x.sin()
+        }
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn sin_reference(x: f64) -> f64 {
+        x.sin()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn cos_reference(x: f64) -> f64 {
+        if x.abs() <= MPFR_TRIG_LIMIT {
+            mpfr_cos_f64(x)
+        } else {
+            x.cos()
+        }
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn cos_reference(x: f64) -> f64 {
+        x.cos()
     }
 
     fn assert_ulp_eq(actual: f64, expected: f64, max_ulps: f64, context: &str) {
@@ -164,6 +225,30 @@ mod tests {
         }
         for i in -70..=70 {
             push_unique(&mut inputs, (i as f64) * 10.0);
+        }
+        inputs
+    }
+
+    fn exp_special_inputs() -> Vec<f64> {
+        let mut inputs = Vec::new();
+        let specials = [
+            0.0,
+            -0.0,
+            1.0,
+            -1.0,
+            0.5,
+            -0.5,
+            std::f64::consts::LN_2,
+            -std::f64::consts::LN_2,
+            std::f64::consts::LN_2 / 128.0,
+            -std::f64::consts::LN_2 / 128.0,
+            -100.0,
+            100.0,
+            -700.0,
+            700.0,
+        ];
+        for &x in &specials {
+            push_unique(&mut inputs, x);
         }
         inputs
     }
@@ -582,6 +667,13 @@ mod tests {
 
     use proptest::prelude::*;
     proptest! {
+        #[test]
+        fn ptest_exp_special(x in proptest::sample::select(exp_special_inputs())) {
+            let actual = fastlibm::exp(x);
+            let expected = x.exp();
+            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("exp special({x})"));
+        }
+
         #[cfg(feature = "mpfr")]
         #[test]
         fn ptest_exp(x in -745.0..709.78_f64) {
@@ -594,7 +686,7 @@ mod tests {
         fn ptest_ln(x in proptest::num::f64::POSITIVE) {
             if x.is_finite() && x > 0.0 {
                 let actual = fastlibm::ln(x);
-                let expected = x.ln();
+                let expected = ln_reference(x);
                 assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("ln({x})"));
             }
         }
@@ -602,22 +694,32 @@ mod tests {
         #[test]
         fn ptest_sin(x in -1e20..1e20_f64) {
             let actual = fastlibm::sin(x);
-            let expected = x.sin();
+            let expected = sin_reference(x);
             assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("sin({x})"));
         }
 
         #[test]
         fn ptest_cos(x in -1e20..1e20_f64) {
             let actual = fastlibm::cos(x);
-            let expected = x.cos();
+            let expected = cos_reference(x);
             assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("cos({x})"));
         }
 
         #[test]
         fn ptest_sincos(x in -1e20..1e20_f64) {
             let (s_actual, c_actual) = fastlibm::sincos(x);
-            assert_ulp_eq(s_actual, x.sin(), MAX_ULP_TOL, &format!("sincos sin({x})"));
-            assert_ulp_eq(c_actual, x.cos(), MAX_ULP_TOL, &format!("sincos cos({x})"));
+            assert_ulp_eq(
+                s_actual,
+                sin_reference(x),
+                MAX_ULP_TOL,
+                &format!("sincos sin({x})"),
+            );
+            assert_ulp_eq(
+                c_actual,
+                cos_reference(x),
+                MAX_ULP_TOL,
+                &format!("sincos cos({x})"),
+            );
         }
     }
 }
