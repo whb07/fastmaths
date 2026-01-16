@@ -98,6 +98,13 @@ mod tests {
     }
 
     #[cfg(feature = "mpfr")]
+    fn mpfr_log1p_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.ln_1p_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
     fn mpfr_sin_f64(x: f64) -> f64 {
         let mut v = Float::with_val(MPFR_PREC, x);
         v.sin_mut();
@@ -115,6 +122,20 @@ mod tests {
     fn mpfr_tan_f64(x: f64) -> f64 {
         let mut v = Float::with_val(MPFR_PREC, x);
         v.tan_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_asin_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.asin_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_acos_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.acos_mut();
         v.to_f64()
     }
 
@@ -160,6 +181,49 @@ mod tests {
         let base = Float::with_val(MPFR_PREC, x);
         let exp = Float::with_val(MPFR_PREC, y);
         base.pow(exp).to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_sinh_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.sinh_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_cosh_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.cosh_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_tanh_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.tanh_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_fmod_f64(x: f64, y: f64) -> f64 {
+        if x.is_nan() || y.is_nan() || y == 0.0 || x.is_infinite() {
+            return f64::NAN;
+        }
+        let mut vx = Float::with_val(MPFR_PREC, x);
+        let vy = Float::with_val(MPFR_PREC, y);
+        vx %= vy;
+        vx.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_remainder_f64(x: f64, y: f64) -> f64 {
+        if x.is_nan() || y.is_nan() || y == 0.0 || x.is_infinite() {
+            return f64::NAN;
+        }
+        let mut vx = Float::with_val(MPFR_PREC, x);
+        let vy = Float::with_val(MPFR_PREC, y);
+        vx.remainder_mut(&vy);
+        vx.to_f64()
     }
 
     #[cfg(feature = "mpfr")]
@@ -213,6 +277,16 @@ mod tests {
     }
 
     #[cfg(feature = "mpfr")]
+    fn log1p_reference(x: f64) -> f64 {
+        mpfr_log1p_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn log1p_reference(x: f64) -> f64 {
+        x.ln_1p()
+    }
+
+    #[cfg(feature = "mpfr")]
     fn sin_reference(x: f64) -> f64 {
         if x.abs() <= MPFR_TRIG_LIMIT {
             mpfr_sin_f64(x)
@@ -255,6 +329,26 @@ mod tests {
     }
 
     #[cfg(feature = "mpfr")]
+    fn asin_reference(x: f64) -> f64 {
+        mpfr_asin_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn asin_reference(x: f64) -> f64 {
+        x.asin()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn acos_reference(x: f64) -> f64 {
+        mpfr_acos_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn acos_reference(x: f64) -> f64 {
+        x.acos()
+    }
+
+    #[cfg(feature = "mpfr")]
     fn atan_reference(x: f64) -> f64 {
         mpfr_atan_f64(x)
     }
@@ -272,6 +366,57 @@ mod tests {
     #[cfg(not(feature = "mpfr"))]
     fn atan2_reference(y: f64, x: f64) -> f64 {
         y.atan2(x)
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn sinh_reference(x: f64) -> f64 {
+        mpfr_sinh_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn sinh_reference(x: f64) -> f64 {
+        x.sinh()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn cosh_reference(x: f64) -> f64 {
+        mpfr_cosh_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn cosh_reference(x: f64) -> f64 {
+        x.cosh()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn tanh_reference(x: f64) -> f64 {
+        mpfr_tanh_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn tanh_reference(x: f64) -> f64 {
+        x.tanh()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn fmod_reference(x: f64, y: f64) -> f64 {
+        mpfr_fmod_f64(x, y)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn fmod_reference(x: f64, y: f64) -> f64 {
+        x % y
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn remainder_reference(x: f64, y: f64) -> f64 {
+        mpfr_remainder_f64(x, y)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn remainder_reference(x: f64, y: f64) -> f64 {
+        let q = (x / y).round();
+        x - q * y
     }
 
     #[cfg(feature = "mpfr")]
@@ -802,6 +947,158 @@ mod tests {
         inputs
     }
 
+    fn log1p_inputs() -> Vec<f64> {
+        let mut inputs = Vec::new();
+        let specials = [
+            -1.0,
+            -0.999_999_999_999,
+            -0.9,
+            -0.5,
+            -0.25,
+            -1e-12,
+            -1e-6,
+            -0.0,
+            0.0,
+            1e-12,
+            1e-6,
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            10.0,
+            1e6,
+            1e12,
+            1e20,
+        ];
+        for &x in &specials {
+            push_unique(&mut inputs, x);
+        }
+        for &x in &[
+            (-1.0f64).next_up(),
+            (-1.0f64).next_down(),
+            0.0f64.next_up(),
+            0.0f64.next_down(),
+        ] {
+            push_unique(&mut inputs, x);
+        }
+        for i in -100..=100 {
+            push_unique(&mut inputs, (i as f64) * 1e-3);
+        }
+        inputs
+    }
+
+    fn asin_inputs() -> Vec<f64> {
+        let mut inputs = Vec::new();
+        let specials = [
+            -1.0,
+            -0.999_999_999_999,
+            -0.75,
+            -0.5,
+            -0.25,
+            -1e-12,
+            -1e-6,
+            -0.0,
+            0.0,
+            1e-12,
+            1e-6,
+            0.25,
+            0.5,
+            0.75,
+            0.999_999_999_999,
+            1.0,
+        ];
+        for &x in &specials {
+            push_unique(&mut inputs, x);
+        }
+        for i in -100..=100 {
+            let x = (i as f64) / 100.0;
+            if (-1.0..=1.0).contains(&x) {
+                push_unique(&mut inputs, x);
+            }
+        }
+        inputs
+    }
+
+    fn sinh_inputs() -> Vec<f64> {
+        let mut inputs = Vec::new();
+        let specials = [
+            -700.0, -100.0, -50.0, -20.0, -10.0, -1.0, -0.5, -1e-6, -1e-12, -0.0, 0.0, 1e-12, 1e-6,
+            0.5, 1.0, 10.0, 20.0, 50.0, 100.0, 700.0,
+        ];
+        for &x in &specials {
+            push_unique(&mut inputs, x);
+        }
+        for i in -100..=100 {
+            push_unique(&mut inputs, (i as f64) * 0.25);
+        }
+        inputs
+    }
+
+    fn cosh_inputs() -> Vec<f64> {
+        let mut inputs = Vec::new();
+        let specials = [
+            0.0, 1e-12, 1e-6, 0.5, 1.0, 2.0, 10.0, 20.0, 50.0, 100.0, 700.0,
+        ];
+        for &x in &specials {
+            push_unique(&mut inputs, x);
+            push_unique(&mut inputs, -x);
+        }
+        for i in -100..=100 {
+            push_unique(&mut inputs, (i as f64) * 0.25);
+        }
+        inputs
+    }
+
+    fn tanh_inputs() -> Vec<f64> {
+        let mut inputs = Vec::new();
+        let specials = [
+            -50.0, -20.0, -10.0, -3.0, -1.0, -0.5, -1e-6, -1e-12, -0.0, 0.0, 1e-12, 1e-6, 0.5, 1.0,
+            3.0, 10.0, 20.0, 50.0,
+        ];
+        for &x in &specials {
+            push_unique(&mut inputs, x);
+        }
+        for i in -100..=100 {
+            push_unique(&mut inputs, (i as f64) * 0.1);
+        }
+        inputs
+    }
+
+    fn fmod_inputs() -> Vec<(f64, f64)> {
+        vec![
+            (0.0, 1.0),
+            (-0.0, 1.0),
+            (1.0, 0.5),
+            (1.5, 0.5),
+            (-1.5, 0.5),
+            (5.3, 2.1),
+            (-5.3, 2.1),
+            (1e20, 3.0),
+            (1e-10, 1e-12),
+            (1e-10, 1e-6),
+            (1.0, 1.0),
+            (2.0, 3.0),
+            (-2.0, 3.0),
+        ]
+    }
+
+    fn remainder_inputs() -> Vec<(f64, f64)> {
+        vec![
+            (0.0, 1.0),
+            (-0.0, 1.0),
+            (1.0, 0.5),
+            (1.5, 0.5),
+            (-1.5, 0.5),
+            (5.3, 2.1),
+            (-5.3, 2.1),
+            (1e20, 3.0),
+            (1e-10, 1e-12),
+            (1.0, 1.0),
+            (2.0, 3.0),
+            (-2.0, 3.0),
+        ]
+    }
+
     fn glibc_libm_path() -> Option<String> {
         if std::env::var("FASTLIBM_GLIBC_TEST").is_err() {
             return None;
@@ -911,6 +1208,31 @@ mod tests {
     }
 
     #[test]
+    fn log1p_special_cases() {
+        assert!(fastlibm::log1p(f64::NAN).is_nan());
+        assert_eq!(fastlibm::log1p(f64::INFINITY), f64::INFINITY);
+        assert_eq!(fastlibm::log1p(0.0).to_bits(), 0.0f64.to_bits());
+        assert_eq!(fastlibm::log1p(-0.0).to_bits(), (-0.0f64).to_bits());
+        assert_eq!(fastlibm::log1p(-1.0), f64::NEG_INFINITY);
+        assert!(fastlibm::log1p(-1.5).is_nan());
+    }
+
+    #[test]
+    fn log1p_matches_reference_ulps() {
+        for &x in &log1p_inputs() {
+            let expected = log1p_reference(x);
+            let actual = fastlibm::log1p(x);
+            if expected.is_nan() {
+                assert!(actual.is_nan(), "log1p({x}) expected NaN, got {actual}");
+            } else if expected.is_infinite() {
+                assert_eq!(actual, expected, "log1p({x}) expected {expected}");
+            } else {
+                assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("log1p({x})"));
+            }
+        }
+    }
+
+    #[test]
     fn exp2_special_cases() {
         assert!(fastlibm::exp2(f64::NAN).is_nan());
         assert_eq!(fastlibm::exp2(f64::INFINITY), f64::INFINITY);
@@ -988,6 +1310,31 @@ mod tests {
     }
 
     #[test]
+    fn asin_acos_special_cases() {
+        assert!(fastlibm::asin(f64::NAN).is_nan());
+        assert!(fastlibm::acos(f64::NAN).is_nan());
+        assert_eq!(fastlibm::asin(1.0), FRAC_PI_2);
+        assert_eq!(fastlibm::asin(-1.0), -FRAC_PI_2);
+        assert_eq!(fastlibm::acos(1.0), 0.0);
+        assert_eq!(fastlibm::acos(-1.0), PI);
+        assert!(fastlibm::asin(1.1).is_nan());
+        assert!(fastlibm::acos(-1.1).is_nan());
+    }
+
+    #[test]
+    fn asin_acos_matches_reference_ulps() {
+        for &x in &asin_inputs() {
+            let actual = fastlibm::asin(x);
+            let expected = asin_reference(x);
+            assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("asin({x})"));
+
+            let actual = fastlibm::acos(x);
+            let expected = acos_reference(x);
+            assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("acos({x})"));
+        }
+    }
+
+    #[test]
     fn atan_matches_reference_ulps() {
         for &x in &atan_inputs() {
             let actual = fastlibm::atan(x);
@@ -1006,6 +1353,39 @@ mod tests {
     }
 
     #[test]
+    fn sinh_cosh_tanh_special_cases() {
+        assert!(fastlibm::sinh(f64::NAN).is_nan());
+        assert!(fastlibm::cosh(f64::NAN).is_nan());
+        assert!(fastlibm::tanh(f64::NAN).is_nan());
+
+        assert_eq!(fastlibm::sinh(f64::INFINITY), f64::INFINITY);
+        assert_eq!(fastlibm::sinh(f64::NEG_INFINITY), f64::NEG_INFINITY);
+        assert_eq!(fastlibm::cosh(f64::INFINITY), f64::INFINITY);
+        assert_eq!(fastlibm::cosh(f64::NEG_INFINITY), f64::INFINITY);
+        assert_eq!(fastlibm::tanh(f64::INFINITY), 1.0);
+        assert_eq!(fastlibm::tanh(f64::NEG_INFINITY), -1.0);
+    }
+
+    #[test]
+    fn sinh_cosh_tanh_matches_reference_ulps() {
+        for &x in &sinh_inputs() {
+            let actual = fastlibm::sinh(x);
+            let expected = sinh_reference(x);
+            assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("sinh({x})"));
+        }
+        for &x in &cosh_inputs() {
+            let actual = fastlibm::cosh(x);
+            let expected = cosh_reference(x);
+            assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("cosh({x})"));
+        }
+        for &x in &tanh_inputs() {
+            let actual = fastlibm::tanh(x);
+            let expected = tanh_reference(x);
+            assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("tanh({x})"));
+        }
+    }
+
+    #[test]
     fn hypot_matches_reference_ulps() {
         for &(x, y) in &hypot_inputs() {
             let actual = fastlibm::hypot(x, y);
@@ -1016,6 +1396,61 @@ mod tests {
                 DERIVED_ULP_TOL,
                 &format!("hypot({x},{y})"),
             );
+        }
+    }
+
+    #[test]
+    fn fmod_special_cases() {
+        assert!(fastlibm::fmod(f64::NAN, 1.0).is_nan());
+        assert!(fastlibm::fmod(1.0, f64::NAN).is_nan());
+        assert!(fastlibm::fmod(f64::INFINITY, 1.0).is_nan());
+        assert!(fastlibm::fmod(1.0, 0.0).is_nan());
+        assert_eq!(fastlibm::fmod(0.0, 1.0).to_bits(), 0.0f64.to_bits());
+        assert_eq!(fastlibm::fmod(-0.0, 1.0).to_bits(), (-0.0f64).to_bits());
+    }
+
+    #[test]
+    fn fmod_matches_reference_ulps() {
+        for &(x, y) in &fmod_inputs() {
+            let actual = fastlibm::fmod(x, y);
+            let expected = fmod_reference(x, y);
+            if expected.is_nan() {
+                assert!(actual.is_nan(), "fmod({x},{y}) expected NaN");
+            } else {
+                assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("fmod({x},{y})"));
+            }
+        }
+    }
+
+    #[test]
+    fn remainder_special_cases() {
+        assert!(fastlibm::remainder(f64::NAN, 1.0).is_nan());
+        assert!(fastlibm::remainder(1.0, f64::NAN).is_nan());
+        assert!(fastlibm::remainder(f64::INFINITY, 1.0).is_nan());
+        assert!(fastlibm::remainder(1.0, 0.0).is_nan());
+        assert_eq!(fastlibm::remainder(0.0, 1.0).to_bits(), 0.0f64.to_bits());
+        assert_eq!(
+            fastlibm::remainder(-0.0, 1.0).to_bits(),
+            (-0.0f64).to_bits()
+        );
+        assert_eq!(fastlibm::remainder(1.0, f64::INFINITY), 1.0);
+    }
+
+    #[test]
+    fn remainder_matches_reference_ulps() {
+        for &(x, y) in &remainder_inputs() {
+            let actual = fastlibm::remainder(x, y);
+            let expected = remainder_reference(x, y);
+            if expected.is_nan() {
+                assert!(actual.is_nan(), "remainder({x},{y}) expected NaN");
+            } else {
+                assert_ulp_eq(
+                    actual,
+                    expected,
+                    DERIVED_ULP_TOL,
+                    &format!("remainder({x},{y})"),
+                );
+            }
         }
     }
 
@@ -1282,12 +1717,20 @@ mod tests {
         let log: libloading::Symbol<CFn> = unsafe { lib.get(b"log").unwrap() };
         let log2: libloading::Symbol<CFn> = unsafe { lib.get(b"log2").unwrap() };
         let log10: libloading::Symbol<CFn> = unsafe { lib.get(b"log10").unwrap() };
+        let log1p: libloading::Symbol<CFn> = unsafe { lib.get(b"log1p").unwrap() };
         let sin: libloading::Symbol<CFn> = unsafe { lib.get(b"sin").unwrap() };
         let cos: libloading::Symbol<CFn> = unsafe { lib.get(b"cos").unwrap() };
         let tan: libloading::Symbol<CFn> = unsafe { lib.get(b"tan").unwrap() };
+        let asin: libloading::Symbol<CFn> = unsafe { lib.get(b"asin").unwrap() };
+        let acos: libloading::Symbol<CFn> = unsafe { lib.get(b"acos").unwrap() };
         let atan: libloading::Symbol<CFn> = unsafe { lib.get(b"atan").unwrap() };
         let atan2: libloading::Symbol<CFn2> = unsafe { lib.get(b"atan2").unwrap() };
+        let sinh: libloading::Symbol<CFn> = unsafe { lib.get(b"sinh").unwrap() };
+        let cosh: libloading::Symbol<CFn> = unsafe { lib.get(b"cosh").unwrap() };
+        let tanh: libloading::Symbol<CFn> = unsafe { lib.get(b"tanh").unwrap() };
         let hypot: libloading::Symbol<CFn2> = unsafe { lib.get(b"hypot").unwrap() };
+        let fmod: libloading::Symbol<CFn2> = unsafe { lib.get(b"fmod").unwrap() };
+        let remainder: libloading::Symbol<CFn2> = unsafe { lib.get(b"remainder").unwrap() };
         let pow: libloading::Symbol<CFn2> = unsafe { lib.get(b"pow").unwrap() };
         let sqrt: libloading::Symbol<CFn> = unsafe { lib.get(b"sqrt").unwrap() };
         let cbrt: libloading::Symbol<CFn> = unsafe { lib.get(b"cbrt").unwrap() };
@@ -1338,6 +1781,13 @@ mod tests {
         }
 
         for _ in 0..samples {
+            let x = rand_range(&mut state, -0.9, 1e6);
+            let g = unsafe { log1p(x) };
+            let f = fastlibm::log1p(x);
+            assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist log1p({x})"));
+        }
+
+        for _ in 0..samples {
             let x = rand_range(&mut state, -1e6, 1e6);
             let g = unsafe { sin(x) };
             let f = fastlibm::sin(x);
@@ -1359,10 +1809,45 @@ mod tests {
         }
 
         for _ in 0..samples {
+            let x = rand_range(&mut state, -1.0, 1.0);
+            let g = unsafe { asin(x) };
+            let f = fastlibm::asin(x);
+            assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist asin({x})"));
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -1.0, 1.0);
+            let g = unsafe { acos(x) };
+            let f = fastlibm::acos(x);
+            assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist acos({x})"));
+        }
+
+        for _ in 0..samples {
             let x = rand_range(&mut state, -1e6, 1e6);
             let g = unsafe { atan(x) };
             let f = fastlibm::atan(x);
             assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist atan({x})"));
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -20.0, 20.0);
+            let g = unsafe { sinh(x) };
+            let f = fastlibm::sinh(x);
+            assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist sinh({x})"));
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -20.0, 20.0);
+            let g = unsafe { cosh(x) };
+            let f = fastlibm::cosh(x);
+            assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist cosh({x})"));
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -20.0, 20.0);
+            let g = unsafe { tanh(x) };
+            let f = fastlibm::tanh(x);
+            assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist tanh({x})"));
         }
 
         for _ in 0..samples {
@@ -1382,6 +1867,28 @@ mod tests {
             let g = unsafe { hypot(x, y) };
             let f = fastlibm::hypot(x, y);
             assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist hypot({x},{y})"));
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -1e6, 1e6);
+            let mut y = rand_range(&mut state, 1e-6, 1e6);
+            if rand_u64(&mut state) & 1 == 0 {
+                y = -y;
+            }
+            let g = unsafe { fmod(x, y) };
+            let f = fastlibm::fmod(x, y);
+            assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist fmod({x},{y})"));
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -1e6, 1e6);
+            let mut y = rand_range(&mut state, 1e-6, 1e6);
+            if rand_u64(&mut state) & 1 == 0 {
+                y = -y;
+            }
+            let g = unsafe { remainder(x, y) };
+            let f = fastlibm::remainder(x, y);
+            assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist remainder({x},{y})"));
         }
 
         for _ in 0..samples {
@@ -1427,9 +1934,17 @@ mod tests {
         let expm1: libloading::Symbol<CFn> = unsafe { lib.get(b"expm1").unwrap() };
         let log2: libloading::Symbol<CFn> = unsafe { lib.get(b"log2").unwrap() };
         let log10: libloading::Symbol<CFn> = unsafe { lib.get(b"log10").unwrap() };
+        let log1p: libloading::Symbol<CFn> = unsafe { lib.get(b"log1p").unwrap() };
         let atan: libloading::Symbol<CFn> = unsafe { lib.get(b"atan").unwrap() };
         let atan2: libloading::Symbol<CFn2> = unsafe { lib.get(b"atan2").unwrap() };
+        let asin: libloading::Symbol<CFn> = unsafe { lib.get(b"asin").unwrap() };
+        let acos: libloading::Symbol<CFn> = unsafe { lib.get(b"acos").unwrap() };
+        let sinh: libloading::Symbol<CFn> = unsafe { lib.get(b"sinh").unwrap() };
+        let cosh: libloading::Symbol<CFn> = unsafe { lib.get(b"cosh").unwrap() };
+        let tanh: libloading::Symbol<CFn> = unsafe { lib.get(b"tanh").unwrap() };
         let hypot: libloading::Symbol<CFn2> = unsafe { lib.get(b"hypot").unwrap() };
+        let fmod: libloading::Symbol<CFn2> = unsafe { lib.get(b"fmod").unwrap() };
+        let remainder: libloading::Symbol<CFn2> = unsafe { lib.get(b"remainder").unwrap() };
         let pow: libloading::Symbol<CFn2> = unsafe { lib.get(b"pow").unwrap() };
         let sqrt: libloading::Symbol<CFn> = unsafe { lib.get(b"sqrt").unwrap() };
         let cbrt: libloading::Symbol<CFn> = unsafe { lib.get(b"cbrt").unwrap() };
@@ -1561,6 +2076,20 @@ mod tests {
         }
 
         for _ in 0..samples {
+            let x = rand_range(&mut state, -0.9, 1e6);
+            let mp = mpfr_log1p_f64(x);
+            let g = unsafe { log1p(x) };
+            let f = fastlibm::log1p(x);
+            let ulp_f = ulp_error(f, mp);
+            let ulp_g = ulp_error(g, mp);
+            assert!(ulp_f <= 1.0, "mpfr log1p ulp {ulp_f} > 1 at {x}");
+            assert!(
+                ulp_f <= ulp_g,
+                "fast log1p ulp {ulp_f} > glibc {ulp_g} at {x}"
+            );
+        }
+
+        for _ in 0..samples {
             let x = rand_range(&mut state, 0.1, 10.0);
             let y = rand_range(&mut state, -10.0, 10.0);
             let mp = mpfr_pow_f64(x, y);
@@ -1590,6 +2119,34 @@ mod tests {
         }
 
         for _ in 0..samples {
+            let x = rand_range(&mut state, -1.0, 1.0);
+            let mp = mpfr_asin_f64(x);
+            let g = unsafe { asin(x) };
+            let f = fastlibm::asin(x);
+            let ulp_f = ulp_error(f, mp);
+            let ulp_g = ulp_error(g, mp);
+            assert!(ulp_f <= 1.0, "mpfr asin ulp {ulp_f} > 1 at {x}");
+            assert!(
+                ulp_f <= ulp_g,
+                "fast asin ulp {ulp_f} > glibc {ulp_g} at {x}"
+            );
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -1.0, 1.0);
+            let mp = mpfr_acos_f64(x);
+            let g = unsafe { acos(x) };
+            let f = fastlibm::acos(x);
+            let ulp_f = ulp_error(f, mp);
+            let ulp_g = ulp_error(g, mp);
+            assert!(ulp_f <= 1.0, "mpfr acos ulp {ulp_f} > 1 at {x}");
+            assert!(
+                ulp_f <= ulp_g,
+                "fast acos ulp {ulp_f} > glibc {ulp_g} at {x}"
+            );
+        }
+
+        for _ in 0..samples {
             let y = rand_range(&mut state, -1e6, 1e6);
             let x = rand_range(&mut state, -1e6, 1e6);
             if x == 0.0 && y == 0.0 {
@@ -1608,6 +2165,48 @@ mod tests {
         }
 
         for _ in 0..samples {
+            let x = rand_range(&mut state, -20.0, 20.0);
+            let mp = mpfr_sinh_f64(x);
+            let g = unsafe { sinh(x) };
+            let f = fastlibm::sinh(x);
+            let ulp_f = ulp_error(f, mp);
+            let ulp_g = ulp_error(g, mp);
+            assert!(ulp_f <= 1.0, "mpfr sinh ulp {ulp_f} > 1 at {x}");
+            assert!(
+                ulp_f <= ulp_g,
+                "fast sinh ulp {ulp_f} > glibc {ulp_g} at {x}"
+            );
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -20.0, 20.0);
+            let mp = mpfr_cosh_f64(x);
+            let g = unsafe { cosh(x) };
+            let f = fastlibm::cosh(x);
+            let ulp_f = ulp_error(f, mp);
+            let ulp_g = ulp_error(g, mp);
+            assert!(ulp_f <= 1.0, "mpfr cosh ulp {ulp_f} > 1 at {x}");
+            assert!(
+                ulp_f <= ulp_g,
+                "fast cosh ulp {ulp_f} > glibc {ulp_g} at {x}"
+            );
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -20.0, 20.0);
+            let mp = mpfr_tanh_f64(x);
+            let g = unsafe { tanh(x) };
+            let f = fastlibm::tanh(x);
+            let ulp_f = ulp_error(f, mp);
+            let ulp_g = ulp_error(g, mp);
+            assert!(ulp_f <= 1.0, "mpfr tanh ulp {ulp_f} > 1 at {x}");
+            assert!(
+                ulp_f <= ulp_g,
+                "fast tanh ulp {ulp_f} > glibc {ulp_g} at {x}"
+            );
+        }
+
+        for _ in 0..samples {
             let x = rand_range(&mut state, -1e200, 1e200);
             let y = rand_range(&mut state, -1e200, 1e200);
             let mp = mpfr_hypot_f64(x, y);
@@ -1619,6 +2218,42 @@ mod tests {
             assert!(
                 ulp_f <= ulp_g,
                 "fast hypot ulp {ulp_f} > glibc {ulp_g} at {x},{y}"
+            );
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -1e6, 1e6);
+            let mut y = rand_range(&mut state, 1e-6, 1e6);
+            if rand_u64(&mut state) & 1 == 0 {
+                y = -y;
+            }
+            let mp = mpfr_fmod_f64(x, y);
+            let g = unsafe { fmod(x, y) };
+            let f = fastlibm::fmod(x, y);
+            let ulp_f = ulp_error(f, mp);
+            let ulp_g = ulp_error(g, mp);
+            assert!(ulp_f <= 1.0, "mpfr fmod ulp {ulp_f} > 1 at {x},{y}");
+            assert!(
+                ulp_f <= ulp_g,
+                "fast fmod ulp {ulp_f} > glibc {ulp_g} at {x},{y}"
+            );
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -1e6, 1e6);
+            let mut y = rand_range(&mut state, 1e-6, 1e6);
+            if rand_u64(&mut state) & 1 == 0 {
+                y = -y;
+            }
+            let mp = mpfr_remainder_f64(x, y);
+            let g = unsafe { remainder(x, y) };
+            let f = fastlibm::remainder(x, y);
+            let ulp_f = ulp_error(f, mp);
+            let ulp_g = ulp_error(g, mp);
+            assert!(ulp_f <= 1.0, "mpfr remainder ulp {ulp_f} > 1 at {x},{y}");
+            assert!(
+                ulp_f <= ulp_g,
+                "fast remainder ulp {ulp_f} > glibc {ulp_g} at {x},{y}"
             );
         }
 
@@ -1759,6 +2394,17 @@ mod tests {
         }
 
         #[test]
+        fn ptest_log1p(x in -0.999_999_999_999_f64..1e6_f64) {
+            let actual = fastlibm::log1p(x);
+            let expected = log1p_reference(x);
+            if expected.is_nan() {
+                assert!(actual.is_nan(), "log1p({x}) expected NaN");
+            } else {
+                assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("log1p({x})"));
+            }
+        }
+
+        #[test]
         fn ptest_tan(x in -1e6..1e6_f64) {
             let actual = fastlibm::tan(x);
             let expected = tan_reference(x);
@@ -1778,6 +2424,20 @@ mod tests {
         }
 
         #[test]
+        fn ptest_asin(x in -1.0..1.0_f64) {
+            let actual = fastlibm::asin(x);
+            let expected = asin_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("asin({x})"));
+        }
+
+        #[test]
+        fn ptest_acos(x in -1.0..1.0_f64) {
+            let actual = fastlibm::acos(x);
+            let expected = acos_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("acos({x})"));
+        }
+
+        #[test]
         fn ptest_atan2(y in -1e6..1e6_f64, x in -1e6..1e6_f64) {
             let actual = fastlibm::atan2(y, x);
             let expected = atan2_reference(y, x);
@@ -1789,6 +2449,27 @@ mod tests {
             let actual = fastlibm::hypot(x, y);
             let expected = hypot_reference(x, y);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("hypot({x},{y})"));
+        }
+
+        #[test]
+        fn ptest_sinh(x in -100.0..100.0_f64) {
+            let actual = fastlibm::sinh(x);
+            let expected = sinh_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("sinh({x})"));
+        }
+
+        #[test]
+        fn ptest_cosh(x in -100.0..100.0_f64) {
+            let actual = fastlibm::cosh(x);
+            let expected = cosh_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("cosh({x})"));
+        }
+
+        #[test]
+        fn ptest_tanh(x in -20.0..20.0_f64) {
+            let actual = fastlibm::tanh(x);
+            let expected = tanh_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("tanh({x})"));
         }
 
         #[test]
@@ -1820,6 +2501,39 @@ mod tests {
                 PROPTEST_ULP_TOL,
                 &format!("cbrt({x})"),
             );
+        }
+
+        #[test]
+        fn ptest_fmod(
+            x in -1e6..1e6_f64,
+            y in prop_oneof![1e-6..1e6_f64, -1e6..-1e-6_f64],
+        ) {
+            let actual = fastlibm::fmod(x, y);
+            let expected = fmod_reference(x, y);
+            if expected.is_nan() {
+                assert!(actual.is_nan(), "fmod({x},{y}) expected NaN");
+            } else {
+                assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("fmod({x},{y})"));
+            }
+        }
+
+        #[test]
+        fn ptest_remainder(
+            x in -1e6..1e6_f64,
+            y in prop_oneof![1e-6..1e6_f64, -1e6..-1e-6_f64],
+        ) {
+            let actual = fastlibm::remainder(x, y);
+            let expected = remainder_reference(x, y);
+            if expected.is_nan() {
+                assert!(actual.is_nan(), "remainder({x},{y}) expected NaN");
+            } else {
+                assert_ulp_eq(
+                    actual,
+                    expected,
+                    PROPTEST_ULP_TOL,
+                    &format!("remainder({x},{y})"),
+                );
+            }
         }
     }
 }

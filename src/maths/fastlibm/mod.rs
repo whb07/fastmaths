@@ -3,40 +3,56 @@
 #![allow(clippy::unusual_byte_groupings)]
 #![allow(dead_code)]
 
+mod acos;
+mod asin;
 mod atan;
 mod atan2;
 mod cbrt;
 mod cos;
+mod cosh;
 mod exp;
 mod exp2;
 mod expm1;
+mod fmod;
 mod hypot;
 mod log;
 mod log10;
+mod log1p;
 mod log2;
 mod pow;
+mod remainder;
 mod sin;
 mod sincos_tab;
+mod sinh;
 mod sqrt;
 mod tan;
+mod tanh;
 mod trig;
 mod utan_tables;
 
+pub use acos::acos;
+pub use asin::asin;
 pub use atan::atan;
 pub use atan2::atan2;
 pub use cbrt::cbrt;
 pub use cos::cos;
+pub use cosh::cosh;
 pub use exp::exp;
 pub use exp2::exp2;
 pub use expm1::expm1;
+pub use fmod::fmod;
 pub use hypot::hypot;
 pub use log::ln;
+pub use log1p::log1p;
 pub use log2::log2;
 pub use log10::log10;
 pub use pow::pow;
+pub use remainder::remainder;
 pub use sin::sin;
+pub use sinh::sinh;
 pub use sqrt::sqrt;
 pub use tan::tan;
+pub use tanh::tanh;
 pub use trig::sincos;
 
 // ========= bit helpers =========

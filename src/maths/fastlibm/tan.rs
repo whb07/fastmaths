@@ -1,8 +1,10 @@
+use super::lo_word;
 use super::trig::branred;
 use super::utan_tables::*;
-use super::{hi_word, lo_word};
 
 const CN: f64 = 134217729.0; // 1 + 2^27
+const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;
+const EXP_MASK: u64 = 0x7ff0_0000_0000_0000u64;
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "fma")]
@@ -12,16 +14,18 @@ unsafe fn fma_f64(a: f64, b: f64, c: f64) -> f64 {
 }
 
 #[inline(always)]
-fn fma_fast(a: f64, b: f64, c: f64) -> f64 {
-    #[cfg(target_arch = "x86_64")]
-    if super::cpu_has_fma() {
-        // SAFETY: guarded by CPUID.
-        return unsafe { fma_f64(a, b, c) };
+fn fma_opt<const USE_FMA: bool>(a: f64, b: f64, c: f64) -> f64 {
+    if USE_FMA {
+        #[cfg(target_arch = "x86_64")]
+        {
+            // SAFETY: caller guards via CPUID and target_feature.
+            return unsafe { fma_f64(a, b, c) };
+        }
     }
     a * b + c
 }
 
-#[inline]
+#[inline(always)]
 fn eadd(x: f64, y: f64) -> (f64, f64) {
     let z = x + y;
     let zz = if x.abs() > y.abs() {
@@ -32,11 +36,11 @@ fn eadd(x: f64, y: f64) -> (f64, f64) {
     (z, zz)
 }
 
-#[inline]
-fn mul12(x: f64, y: f64) -> (f64, f64) {
+#[inline(always)]
+fn mul12<const USE_FMA: bool>(x: f64, y: f64) -> (f64, f64) {
     let z = x * y;
-    if super::cpu_has_fma() {
-        let zz = fma_fast(x, y, -z);
+    if USE_FMA {
+        let zz = fma_opt::<true>(x, y, -z);
         return (z, zz);
     }
     let p = CN * x;
@@ -49,28 +53,29 @@ fn mul12(x: f64, y: f64) -> (f64, f64) {
     (z, zz)
 }
 
-#[inline]
-fn div2(x: f64, xx: f64, y: f64, yy: f64) -> (f64, f64) {
+#[inline(always)]
+fn div2<const USE_FMA: bool>(x: f64, xx: f64, y: f64, yy: f64) -> (f64, f64) {
     let c = x / y;
-    let (u, uu) = mul12(c, y);
+    let (u, uu) = mul12::<USE_FMA>(c, y);
     let cc = (((x - u) - uu) + xx - c * yy) / y;
     let z = c + cc;
     let zz = (c - z) + cc;
     (z, zz)
 }
 
-#[inline]
-fn tan_poly(a: f64, da: f64, n: i32) -> f64 {
+#[inline(always)]
+fn tan_poly<const USE_FMA: bool>(a: f64, da: f64, n: i32) -> f64 {
     let a2 = a * a;
-    let mut t2 = UTAN_D9 + a2 * UTAN_D11;
-    t2 = UTAN_D7 + a2 * t2;
-    t2 = UTAN_D5 + a2 * t2;
-    t2 = UTAN_D3 + a2 * t2;
-    t2 = da + a * a2 * t2;
+    let mut t2 = fma_opt::<USE_FMA>(a2, UTAN_D11, UTAN_D9);
+    t2 = fma_opt::<USE_FMA>(a2, t2, UTAN_D7);
+    t2 = fma_opt::<USE_FMA>(a2, t2, UTAN_D5);
+    t2 = fma_opt::<USE_FMA>(a2, t2, UTAN_D3);
+    let a3 = a * a2;
+    t2 = fma_opt::<USE_FMA>(a3, t2, da);
 
     if n != 0 {
         let (b, db) = eadd(a, t2);
-        let (c, dc) = div2(1.0, 0.0, b, db);
+        let (c, dc) = div2::<USE_FMA>(1.0, 0.0, b, db);
         let y = c + dc;
         -y
     } else {
@@ -78,14 +83,15 @@ fn tan_poly(a: f64, da: f64, n: i32) -> f64 {
     }
 }
 
-#[inline]
-fn tan_table(ya: f64, yya: f64, sy: f64, n: i32) -> f64 {
+#[inline(always)]
+fn tan_table<const USE_FMA: bool>(ya: f64, yya: f64, sy: f64, n: i32) -> f64 {
     let i = (UTAN_MFFTNHF + 256.0 * ya) as i32;
     let idx = i as usize;
     let z0 = ya - UTAN_XFG[idx][0];
     let z = z0 + yya;
     let z2 = z * z;
-    let pz = z + z * z2 * (UTAN_E0 + z2 * UTAN_E1);
+    let poly = fma_opt::<USE_FMA>(z2, UTAN_E1, UTAN_E0);
+    let pz = fma_opt::<USE_FMA>(z * z2, poly, z);
     let fi = UTAN_XFG[idx][1];
     let gi = UTAN_XFG[idx][2];
 
@@ -100,26 +106,27 @@ fn tan_table(ya: f64, yya: f64, sy: f64, n: i32) -> f64 {
     }
 }
 
-#[inline]
-pub fn tan(x: f64) -> f64 {
-    let ux = hi_word(x);
-    if (ux & 0x7ff0_0000) == 0x7ff0_0000 {
+#[inline(always)]
+fn tan_impl<const USE_FMA: bool>(x: f64) -> f64 {
+    let xb = x.to_bits();
+    if (xb & EXP_MASK) == EXP_MASK {
         return f64::NAN;
     }
 
-    let w = x.abs();
+    let sign = (xb & SIGN_MASK) != 0;
+    let w = f64::from_bits(xb & !SIGN_MASK);
     if w <= UTAN_G1 {
         return x;
     }
 
     if w <= UTAN_G2 {
         let x2 = x * x;
-        let mut t2 = UTAN_D9 + x2 * UTAN_D11;
-        t2 = UTAN_D7 + x2 * t2;
-        t2 = UTAN_D5 + x2 * t2;
-        t2 = UTAN_D3 + x2 * t2;
-        t2 *= x * x2;
-        return x + t2;
+        let mut t2 = fma_opt::<USE_FMA>(x2, UTAN_D11, UTAN_D9);
+        t2 = fma_opt::<USE_FMA>(x2, t2, UTAN_D7);
+        t2 = fma_opt::<USE_FMA>(x2, t2, UTAN_D5);
+        t2 = fma_opt::<USE_FMA>(x2, t2, UTAN_D3);
+        let x3 = x * x2;
+        return fma_opt::<USE_FMA>(x3, t2, x);
     }
 
     if w <= UTAN_G3 {
@@ -127,12 +134,13 @@ pub fn tan(x: f64) -> f64 {
         let idx = i as usize;
         let z = w - UTAN_XFG[idx][0];
         let z2 = z * z;
-        let pz = z + z * z2 * (UTAN_E0 + z2 * UTAN_E1);
+        let poly = fma_opt::<USE_FMA>(z2, UTAN_E1, UTAN_E0);
+        let pz = fma_opt::<USE_FMA>(z * z2, poly, z);
         let fi = UTAN_XFG[idx][1];
         let gi = UTAN_XFG[idx][2];
         let t2 = pz * (gi + fi) / (gi - pz);
         let y = fi + t2;
-        return if x < 0.0 { -y } else { y };
+        return if sign { -y } else { y };
     }
 
     if w <= UTAN_G4 {
@@ -151,10 +159,10 @@ pub fn tan(x: f64) -> f64 {
         };
 
         if ya <= UTAN_GY2 {
-            return tan_poly(a, da, n);
+            return tan_poly::<USE_FMA>(a, da, n);
         }
 
-        return tan_table(ya, yya, sy, n);
+        return tan_table::<USE_FMA>(ya, yya, sy, n);
     }
 
     if w <= UTAN_G5 {
@@ -177,10 +185,10 @@ pub fn tan(x: f64) -> f64 {
         };
 
         if ya <= UTAN_GY2 {
-            return tan_poly(a, da, n);
+            return tan_poly::<USE_FMA>(a, da, n);
         }
 
-        return tan_table(ya, yya, sy, n);
+        return tan_table::<USE_FMA>(ya, yya, sy, n);
     }
 
     let (n_full, a_raw, da_raw) = branred(x);
@@ -194,8 +202,29 @@ pub fn tan(x: f64) -> f64 {
     };
 
     if ya <= UTAN_GY2 {
-        return tan_poly(a, da, n);
+        return tan_poly::<USE_FMA>(a, da, n);
     }
 
-    tan_table(ya, yya, sy, n)
+    tan_table::<USE_FMA>(ya, yya, sy, n)
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn tan_fma(x: f64) -> f64 {
+    tan_impl::<true>(x)
+}
+
+#[inline(always)]
+fn tan_generic(x: f64) -> f64 {
+    tan_impl::<false>(x)
+}
+
+#[inline(always)]
+pub fn tan(x: f64) -> f64 {
+    #[cfg(target_arch = "x86_64")]
+    if super::cpu_has_fma() {
+        // SAFETY: guarded by CPUID.
+        return unsafe { tan_fma(x) };
+    }
+    tan_generic(x)
 }

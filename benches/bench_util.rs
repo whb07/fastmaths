@@ -112,12 +112,20 @@ struct LibmFns {
     log: unsafe extern "C" fn(f64) -> f64,
     log2: unsafe extern "C" fn(f64) -> f64,
     log10: unsafe extern "C" fn(f64) -> f64,
+    log1p: unsafe extern "C" fn(f64) -> f64,
     sin: unsafe extern "C" fn(f64) -> f64,
     cos: unsafe extern "C" fn(f64) -> f64,
     tan: unsafe extern "C" fn(f64) -> f64,
+    asin: unsafe extern "C" fn(f64) -> f64,
+    acos: unsafe extern "C" fn(f64) -> f64,
     atan: unsafe extern "C" fn(f64) -> f64,
     atan2: unsafe extern "C" fn(f64, f64) -> f64,
+    sinh: unsafe extern "C" fn(f64) -> f64,
+    cosh: unsafe extern "C" fn(f64) -> f64,
+    tanh: unsafe extern "C" fn(f64) -> f64,
     hypot: unsafe extern "C" fn(f64, f64) -> f64,
+    fmod: unsafe extern "C" fn(f64, f64) -> f64,
+    remainder: unsafe extern "C" fn(f64, f64) -> f64,
     pow: unsafe extern "C" fn(f64, f64) -> f64,
     sqrt: unsafe extern "C" fn(f64) -> f64,
     cbrt: unsafe extern "C" fn(f64) -> f64,
@@ -156,18 +164,34 @@ fn load_libm() -> LibmFns {
             lib.get(b"log2").expect("load log2");
         let log10: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
             lib.get(b"log10").expect("load log10");
+        let log1p: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"log1p").expect("load log1p");
         let sin: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
             lib.get(b"sin").expect("load sin");
         let cos: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
             lib.get(b"cos").expect("load cos");
         let tan: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
             lib.get(b"tan").expect("load tan");
+        let asin: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"asin").expect("load asin");
+        let acos: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"acos").expect("load acos");
         let atan: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
             lib.get(b"atan").expect("load atan");
         let atan2: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
             lib.get(b"atan2").expect("load atan2");
+        let sinh: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"sinh").expect("load sinh");
+        let cosh: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"cosh").expect("load cosh");
+        let tanh: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"tanh").expect("load tanh");
         let hypot: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
             lib.get(b"hypot").expect("load hypot");
+        let fmod: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
+            lib.get(b"fmod").expect("load fmod");
+        let remainder: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
+            lib.get(b"remainder").expect("load remainder");
         let pow: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
             lib.get(b"pow").expect("load pow");
         let sqrt: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
@@ -182,12 +206,20 @@ fn load_libm() -> LibmFns {
             log: *log,
             log2: *log2,
             log10: *log10,
+            log1p: *log1p,
             sin: *sin,
             cos: *cos,
             tan: *tan,
+            asin: *asin,
+            acos: *acos,
             atan: *atan,
             atan2: *atan2,
+            sinh: *sinh,
+            cosh: *cosh,
+            tanh: *tanh,
             hypot: *hypot,
+            fmod: *fmod,
+            remainder: *remainder,
             pow: *pow,
             sqrt: *sqrt,
             cbrt: *cbrt,
@@ -230,6 +262,11 @@ pub fn glibc_log10(x: f64) -> f64 {
 }
 
 #[inline(never)]
+pub fn glibc_log1p(x: f64) -> f64 {
+    unsafe { (libm().log1p)(x) }
+}
+
+#[inline(never)]
 pub fn glibc_sin(x: f64) -> f64 {
     unsafe { (libm().sin)(x) }
 }
@@ -245,6 +282,16 @@ pub fn glibc_tan(x: f64) -> f64 {
 }
 
 #[inline(never)]
+pub fn glibc_asin(x: f64) -> f64 {
+    unsafe { (libm().asin)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_acos(x: f64) -> f64 {
+    unsafe { (libm().acos)(x) }
+}
+
+#[inline(never)]
 pub fn glibc_atan(x: f64) -> f64 {
     unsafe { (libm().atan)(x) }
 }
@@ -255,8 +302,33 @@ pub fn glibc_atan2(y: f64, x: f64) -> f64 {
 }
 
 #[inline(never)]
+pub fn glibc_sinh(x: f64) -> f64 {
+    unsafe { (libm().sinh)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_cosh(x: f64) -> f64 {
+    unsafe { (libm().cosh)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_tanh(x: f64) -> f64 {
+    unsafe { (libm().tanh)(x) }
+}
+
+#[inline(never)]
 pub fn glibc_hypot(x: f64, y: f64) -> f64 {
     unsafe { (libm().hypot)(x, y) }
+}
+
+#[inline(never)]
+pub fn glibc_fmod(x: f64, y: f64) -> f64 {
+    unsafe { (libm().fmod)(x, y) }
+}
+
+#[inline(never)]
+pub fn glibc_remainder(x: f64, y: f64) -> f64 {
+    unsafe { (libm().remainder)(x, y) }
 }
 
 #[inline(never)]

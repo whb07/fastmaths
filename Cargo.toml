@@ -39,6 +39,10 @@ name = "bench_log10"
 harness = false
 
 [[bench]]
+name = "bench_log1p"
+harness = false
+
+[[bench]]
 name = "bench_sin"
 harness = false
 
@@ -51,6 +55,14 @@ name = "bench_tan"
 harness = false
 
 [[bench]]
+name = "bench_asin"
+harness = false
+
+[[bench]]
+name = "bench_acos"
+harness = false
+
+[[bench]]
 name = "bench_atan"
 harness = false
 
@@ -59,7 +71,27 @@ name = "bench_atan2"
 harness = false
 
 [[bench]]
+name = "bench_sinh"
+harness = false
+
+[[bench]]
+name = "bench_cosh"
+harness = false
+
+[[bench]]
+name = "bench_tanh"
+harness = false
+
+[[bench]]
 name = "bench_hypot"
+harness = false
+
+[[bench]]
+name = "bench_fmod"
+harness = false
+
+[[bench]]
+name = "bench_remainder"
 harness = false
 
 [[bench]]
