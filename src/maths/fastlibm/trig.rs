@@ -173,6 +173,7 @@ const IBM_HPINV: f64 = f64::from_bits(0x3fe4_5f30_6dc9_c883);
 const IBM_TOINT: f64 = f64::from_bits(0x4338_0000_0000_0000);
 // 2^27 + 1 (exact). Used by branred.c to split x into two numbers.
 const IBM_SPLIT: f64 = f64::from_bits(0x41a0_0000_0200_0000);
+const SIGN_BIT: u64 = 0x8000_0000_0000_0000u64;
 
 const BR_T576: f64 = f64::from_bits(0x63f0_0000_0000_0000);
 const BR_TM600: f64 = f64::from_bits(0x1a70_0000_0000_0000);
@@ -593,15 +594,20 @@ fn do_cos(mut x: f64, mut dx: f64) -> f64 {
 
 #[inline(always)]
 fn do_sin(mut x: f64, mut dx: f64) -> f64 {
-    let xold = x;
-    if x.abs() < 0.126 {
-        return taylor_sin(x * x, x, dx);
+    let sign = x.to_bits() & SIGN_BIT;
+    let absx = x.abs();
+    if absx < 0.126 {
+        if sign != 0 {
+            dx = -dx;
+        }
+        let res = taylor_sin(absx * absx, absx, dx);
+        return f64::from_bits(res.to_bits() ^ sign);
     }
-    if x <= 0.0 {
+    if sign != 0 {
         dx = -dx;
     }
-    let u = IBM_BIG + x.abs();
-    x = x.abs() - (u - IBM_BIG);
+    let u = IBM_BIG + absx;
+    x = absx - (u - IBM_BIG);
 
     let xx = x * x;
     let s = x + (dx + x * xx * (IBM_SN3 + xx * IBM_SN5));
@@ -609,7 +615,7 @@ fn do_sin(mut x: f64, mut dx: f64) -> f64 {
     let (sn, ssn, cs, ccs) = sincos_table_lookup(u);
     let cor = (ssn + s * ccs - sn * c) + cs * s;
     let res = sn + cor;
-    if xold.is_sign_negative() { -res } else { res }
+    f64::from_bits(res.to_bits() ^ sign)
 }
 
 // ---- FMA-specialized do_sin/do_cos (for glibc-like ifunc parity) ----
@@ -646,9 +652,13 @@ unsafe fn do_cos_fma(mut x: f64, mut dx: f64) -> f64 {
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "fma")]
 unsafe fn do_sin_fma(mut x: f64, mut dx: f64) -> f64 {
-    let xold = x;
-    if x.abs() < 0.126 {
-        let xx = x * x;
+    let sign = x.to_bits() & SIGN_BIT;
+    let absx = x.abs();
+    if absx < 0.126 {
+        if sign != 0 {
+            dx = -dx;
+        }
+        let xx = absx * absx;
         let poly = unsafe {
             fma_f64(
                 fma_f64(fma_f64(fma_f64(IBM_S5, xx, IBM_S4), xx, IBM_S3), xx, IBM_S2),
@@ -656,13 +666,13 @@ unsafe fn do_sin_fma(mut x: f64, mut dx: f64) -> f64 {
                 IBM_S1,
             )
         };
-        let t = unsafe { fma_f64(fma_f64(poly, x, -0.5 * dx), xx, dx) };
-        return x + t;
+        let t = unsafe { fma_f64(fma_f64(poly, absx, -0.5 * dx), xx, dx) };
+        let res = absx + t;
+        return f64::from_bits(res.to_bits() ^ sign);
     }
-    if x <= 0.0 {
+    if sign != 0 {
         dx = -dx;
     }
-    let absx = x.abs();
     let u = IBM_BIG + absx;
     x = absx - (u - IBM_BIG);
 
@@ -678,7 +688,7 @@ unsafe fn do_sin_fma(mut x: f64, mut dx: f64) -> f64 {
     let (sn, ssn, cs, ccs) = sincos_table_lookup(u);
     let cor = unsafe { fma_f64(cs, s, fma_f64(-sn, c, fma_f64(s, ccs, ssn))) };
     let res = sn + cor;
-    if xold.is_sign_negative() { -res } else { res }
+    f64::from_bits(res.to_bits() ^ sign)
 }
 
 #[cfg(not(target_arch = "x86_64"))]

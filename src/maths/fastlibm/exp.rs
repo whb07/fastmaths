@@ -377,7 +377,7 @@ fn exp_generic(x: f64) -> f64 {
 }
 
 #[inline(always)]
-fn exp_with_tail_generic(x: f64, xtail: f64) -> f64 {
+pub(crate) fn exp_with_tail_generic(x: f64, xtail: f64) -> f64 {
     let ux = f64_to_bits(x);
     if is_nan_bits(ux) || xtail.is_nan() {
         return f64::NAN;
@@ -469,7 +469,7 @@ unsafe fn exp_fma(x: f64) -> f64 {
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "fma")]
-unsafe fn exp_with_tail_fma(x: f64, xtail: f64) -> f64 {
+pub(crate) unsafe fn exp_with_tail_fma(x: f64, xtail: f64) -> f64 {
     let ux = f64_to_bits(x);
     if is_nan_bits(ux) || xtail.is_nan() {
         return f64::NAN;

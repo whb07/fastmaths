@@ -1,4 +1,4 @@
-use super::{exp::exp_with_tail, f64_from_bits, f64_to_bits, floor_f64};
+use super::{f64_from_bits, f64_to_bits};
 
 const POW_LOG_TABLE_BITS: u32 = 7;
 const POW_LOG_N: u64 = 1u64 << POW_LOG_TABLE_BITS;
@@ -22,16 +22,6 @@ const POW_LOG_A: [f64; 7] = [
 unsafe fn fma_f64(a: f64, b: f64, c: f64) -> f64 {
     use core::arch::x86_64::{_mm_cvtsd_f64, _mm_fmadd_sd, _mm_set_sd};
     _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(a), _mm_set_sd(b), _mm_set_sd(c)))
-}
-
-#[inline(always)]
-fn fma_fast(a: f64, b: f64, c: f64) -> f64 {
-    #[cfg(target_arch = "x86_64")]
-    if super::cpu_has_fma() {
-        // SAFETY: guarded by CPUID.
-        return unsafe { fma_f64(a, b, c) };
-    }
-    a * b + c
 }
 
 const POW_LOG_INVC: [u64; 128] = [
@@ -428,27 +418,29 @@ const POW_LOG_LOGCTAIL: [u64; 128] = [
 ];
 
 #[inline]
-fn is_integer(x: f64) -> bool {
+fn classify_integer(x: f64) -> (bool, bool) {
     if !x.is_finite() {
-        return false;
+        return (false, false);
     }
-    let ax = x.abs();
-    if ax >= (1u64 << 53) as f64 {
-        return true;
+    let ux = f64_to_bits(x) & 0x7fff_ffff_ffff_ffffu64;
+    let exp = ((ux >> 52) & 0x7ff) as i32;
+    if exp < 1023 {
+        return (x == 0.0, false);
     }
-    ax - floor_f64(ax) == 0.0
-}
-
-#[inline]
-fn is_odd_integer(x: f64) -> bool {
-    if !is_integer(x) {
-        return false;
+    if exp > 1075 {
+        return (true, false);
     }
-    let ax = x.abs();
-    if ax >= (1u64 << 53) as f64 {
-        return false;
+    let frac_bits = 52 - (exp - 1023);
+    if frac_bits == 0 {
+        let odd = (ux & 1) != 0;
+        return (true, odd);
     }
-    (ax as i64) & 1 == 1
+    let mask = (1u64 << frac_bits) - 1;
+    if (ux & mask) != 0 {
+        return (false, false);
+    }
+    let odd = ((ux >> frac_bits) & 1) != 0;
+    (true, odd)
 }
 
 #[inline]
@@ -474,7 +466,7 @@ fn powi(mut base: f64, mut exp: i64) -> f64 {
 }
 
 #[inline]
-fn log_inline(ix: u64, tail: &mut f64) -> f64 {
+fn log_inline_generic(ix: u64, tail: &mut f64) -> f64 {
     let tmp = ix.wrapping_sub(POW_LOG_OFF);
     let i = ((tmp >> (52 - POW_LOG_TABLE_BITS)) & (POW_LOG_N - 1)) as usize;
     let k = ((tmp as i64) >> 52) as i32;
@@ -486,15 +478,11 @@ fn log_inline(ix: u64, tail: &mut f64) -> f64 {
     let logc = f64_from_bits(POW_LOG_LOGC[i]);
     let logctail = f64_from_bits(POW_LOG_LOGCTAIL[i]);
 
-    let (r, rhi, rlo) = if super::cpu_has_fma() {
-        (fma_fast(z, invc, -1.0), 0.0, 0.0)
-    } else {
-        let zhi = f64_from_bits((iz.wrapping_add(1u64 << 31)) & (!0u64 << 32));
-        let zlo = z - zhi;
-        let rhi = zhi * invc - 1.0;
-        let rlo = zlo * invc;
-        (rhi + rlo, rhi, rlo)
-    };
+    let zhi = f64_from_bits((iz.wrapping_add(1u64 << 31)) & (!0u64 << 32));
+    let zlo = z - zhi;
+    let rhi = zhi * invc - 1.0;
+    let rlo = zlo * invc;
+    let r = rhi + rlo;
 
     let t1 = kd * POW_LOG_LN2_HI + logc;
     let t2 = t1 + r;
@@ -505,19 +493,50 @@ fn log_inline(ix: u64, tail: &mut f64) -> f64 {
     let ar2 = r * ar;
     let ar3 = r * ar2;
 
-    let (hi, lo3, lo4) = if super::cpu_has_fma() {
-        let hi = t2 + ar2;
-        let lo3 = fma_fast(ar, r, -ar2);
-        let lo4 = t2 - hi + ar2;
-        (hi, lo3, lo4)
-    } else {
-        let arhi = POW_LOG_A[0] * rhi;
-        let arhi2 = rhi * arhi;
-        let hi = t2 + arhi2;
-        let lo3 = rlo * (ar + arhi);
-        let lo4 = t2 - hi + arhi2;
-        (hi, lo3, lo4)
-    };
+    let arhi = POW_LOG_A[0] * rhi;
+    let arhi2 = rhi * arhi;
+    let hi = t2 + arhi2;
+    let lo3 = rlo * (ar + arhi);
+    let lo4 = t2 - hi + arhi2;
+
+    let p = ar3
+        * (POW_LOG_A[1]
+            + r * POW_LOG_A[2]
+            + ar2 * (POW_LOG_A[3] + r * POW_LOG_A[4] + ar2 * (POW_LOG_A[5] + r * POW_LOG_A[6])));
+    let lo = lo1 + lo2 + lo3 + lo4 + p;
+    let y = hi + lo;
+    *tail = hi - y + lo;
+    y
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn log_inline_fma(ix: u64, tail: &mut f64) -> f64 {
+    let tmp = ix.wrapping_sub(POW_LOG_OFF);
+    let i = ((tmp >> (52 - POW_LOG_TABLE_BITS)) & (POW_LOG_N - 1)) as usize;
+    let k = ((tmp as i64) >> 52) as i32;
+    let iz = ix.wrapping_sub(tmp & (0x0fffu64 << 52));
+    let z = f64_from_bits(iz);
+    let kd = k as f64;
+
+    let invc = f64_from_bits(POW_LOG_INVC[i]);
+    let logc = f64_from_bits(POW_LOG_LOGC[i]);
+    let logctail = f64_from_bits(POW_LOG_LOGCTAIL[i]);
+
+    let r = unsafe { fma_f64(z, invc, -1.0) };
+
+    let t1 = kd * POW_LOG_LN2_HI + logc;
+    let t2 = t1 + r;
+    let lo1 = kd * POW_LOG_LN2_LO + logctail;
+    let lo2 = t1 - t2 + r;
+
+    let ar = POW_LOG_A[0] * r;
+    let ar2 = r * ar;
+    let ar3 = r * ar2;
+
+    let hi = t2 + ar2;
+    let lo3 = unsafe { fma_f64(ar, r, -ar2) };
+    let lo4 = t2 - hi + ar2;
 
     let p = ar3
         * (POW_LOG_A[1]
@@ -530,24 +549,26 @@ fn log_inline(ix: u64, tail: &mut f64) -> f64 {
 }
 
 #[inline]
-fn mul_log(y: f64, hi: f64, lo: f64) -> (f64, f64) {
-    if super::cpu_has_fma() {
-        let ehi = y * hi;
-        let elo = y * lo + fma_fast(y, hi, -ehi);
-        (ehi, elo)
-    } else {
-        let yhi = f64_from_bits(f64_to_bits(y) & (!0u64 << 27));
-        let ylo = y - yhi;
-        let lhi = f64_from_bits(f64_to_bits(hi) & (!0u64 << 27));
-        let llo = hi - lhi + lo;
-        let ehi = yhi * lhi;
-        let elo = ylo * lhi + y * llo;
-        (ehi, elo)
-    }
+fn mul_log_generic(y: f64, hi: f64, lo: f64) -> (f64, f64) {
+    let yhi = f64_from_bits(f64_to_bits(y) & (!0u64 << 27));
+    let ylo = y - yhi;
+    let lhi = f64_from_bits(f64_to_bits(hi) & (!0u64 << 27));
+    let llo = hi - lhi + lo;
+    let ehi = yhi * lhi;
+    let elo = ylo * lhi + y * llo;
+    (ehi, elo)
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn mul_log_fma(y: f64, hi: f64, lo: f64) -> (f64, f64) {
+    let ehi = y * hi;
+    let elo = y * lo + unsafe { fma_f64(y, hi, -ehi) };
+    (ehi, elo)
 }
 
 #[inline]
-fn pow_exp(x: f64, y: f64) -> f64 {
+fn pow_exp_generic(x: f64, y: f64) -> f64 {
     let mut ix = f64_to_bits(x);
     if (ix & 0x7ff0_0000_0000_0000u64) == 0 {
         let xn = x * f64_from_bits(0x4330_0000_0000_0000u64); // 2^52
@@ -559,9 +580,38 @@ fn pow_exp(x: f64, y: f64) -> f64 {
     }
 
     let mut lo = 0.0;
-    let hi = log_inline(ix, &mut lo);
-    let (ehi, elo) = mul_log(y, hi, lo);
-    exp_with_tail(ehi, elo)
+    let hi = log_inline_generic(ix, &mut lo);
+    let (ehi, elo) = mul_log_generic(y, hi, lo);
+    super::exp::exp_with_tail_generic(ehi, elo)
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn pow_exp_fma(x: f64, y: f64) -> f64 {
+    let mut ix = f64_to_bits(x);
+    if (ix & 0x7ff0_0000_0000_0000u64) == 0 {
+        let xn = x * f64_from_bits(0x4330_0000_0000_0000u64); // 2^52
+        ix = f64_to_bits(xn);
+        ix &= 0x7fff_ffff_ffff_ffffu64;
+        ix = ix.wrapping_sub(52u64 << 52);
+    } else {
+        ix &= 0x7fff_ffff_ffff_ffffu64;
+    }
+
+    let mut lo = 0.0;
+    let hi = unsafe { log_inline_fma(ix, &mut lo) };
+    let (ehi, elo) = unsafe { mul_log_fma(y, hi, lo) };
+    unsafe { super::exp::exp_with_tail_fma(ehi, elo) }
+}
+
+#[inline]
+fn pow_exp(x: f64, y: f64) -> f64 {
+    #[cfg(target_arch = "x86_64")]
+    if super::cpu_has_fma() {
+        // SAFETY: guarded by CPUID.
+        return unsafe { pow_exp_fma(x, y) };
+    }
+    pow_exp_generic(x, y)
 }
 
 #[inline]
@@ -610,34 +660,32 @@ pub fn pow(x: f64, y: f64) -> f64 {
         };
     }
     if x.is_infinite() {
+        let (_, y_is_odd) = classify_integer(y);
         return if y.is_sign_positive() {
-            if x.is_sign_negative() && is_odd_integer(y) {
+            if x.is_sign_negative() && y_is_odd {
                 f64::NEG_INFINITY
             } else {
                 f64::INFINITY
             }
-        } else if x.is_sign_negative() && is_odd_integer(y) {
+        } else if x.is_sign_negative() && y_is_odd {
             -0.0
         } else {
             0.0
         };
     }
 
-    let mut sign_neg = false;
-    let mut ax = x;
-    if x < 0.0 {
-        if !is_integer(y) {
-            return f64::NAN;
-        }
-        sign_neg = is_odd_integer(y);
-        ax = -x;
-        if y.abs() < (1u64 << 53) as f64 {
-            let res = powi(ax, y as i64);
-            return apply_sign(res, sign_neg);
-        }
+    if x > 0.0 {
+        return pow_exp(x, y);
     }
 
-    if is_integer(y) && y.abs() < (1u64 << 53) as f64 {
+    let (y_is_int, y_is_odd) = classify_integer(y);
+    if !y_is_int {
+        return f64::NAN;
+    }
+    let sign_neg = y_is_odd;
+    let ax = -x;
+    let y_abs = y.abs();
+    if y_abs < (1u64 << 53) as f64 {
         let res = powi(ax, y as i64);
         return apply_sign(res, sign_neg);
     }
