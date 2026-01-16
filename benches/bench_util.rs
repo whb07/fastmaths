@@ -118,6 +118,12 @@ struct LibmFns {
     tan: unsafe extern "C" fn(f64) -> f64,
     asin: unsafe extern "C" fn(f64) -> f64,
     acos: unsafe extern "C" fn(f64) -> f64,
+    asinh: unsafe extern "C" fn(f64) -> f64,
+    acosh: unsafe extern "C" fn(f64) -> f64,
+    atanh: unsafe extern "C" fn(f64) -> f64,
+    erf: unsafe extern "C" fn(f64) -> f64,
+    erfc: unsafe extern "C" fn(f64) -> f64,
+    exp10: unsafe extern "C" fn(f64) -> f64,
     atan: unsafe extern "C" fn(f64) -> f64,
     atan2: unsafe extern "C" fn(f64, f64) -> f64,
     sinh: unsafe extern "C" fn(f64) -> f64,
@@ -125,6 +131,13 @@ struct LibmFns {
     tanh: unsafe extern "C" fn(f64) -> f64,
     hypot: unsafe extern "C" fn(f64, f64) -> f64,
     fmod: unsafe extern "C" fn(f64, f64) -> f64,
+    fdim: unsafe extern "C" fn(f64, f64) -> f64,
+    fmax: unsafe extern "C" fn(f64, f64) -> f64,
+    fmin: unsafe extern "C" fn(f64, f64) -> f64,
+    modf: unsafe extern "C" fn(f64, *mut f64) -> f64,
+    logb: unsafe extern "C" fn(f64) -> f64,
+    ilogb: unsafe extern "C" fn(f64) -> i32,
+    nextafter: unsafe extern "C" fn(f64, f64) -> f64,
     remainder: unsafe extern "C" fn(f64, f64) -> f64,
     pow: unsafe extern "C" fn(f64, f64) -> f64,
     sqrt: unsafe extern "C" fn(f64) -> f64,
@@ -176,6 +189,18 @@ fn load_libm() -> LibmFns {
             lib.get(b"asin").expect("load asin");
         let acos: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
             lib.get(b"acos").expect("load acos");
+        let asinh: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"asinh").expect("load asinh");
+        let acosh: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"acosh").expect("load acosh");
+        let atanh: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"atanh").expect("load atanh");
+        let erf: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"erf").expect("load erf");
+        let erfc: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"erfc").expect("load erfc");
+        let exp10: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"exp10").expect("load exp10");
         let atan: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
             lib.get(b"atan").expect("load atan");
         let atan2: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
@@ -190,6 +215,20 @@ fn load_libm() -> LibmFns {
             lib.get(b"hypot").expect("load hypot");
         let fmod: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
             lib.get(b"fmod").expect("load fmod");
+        let fdim: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
+            lib.get(b"fdim").expect("load fdim");
+        let fmax: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
+            lib.get(b"fmax").expect("load fmax");
+        let fmin: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
+            lib.get(b"fmin").expect("load fmin");
+        let modf: libloading::Symbol<unsafe extern "C" fn(f64, *mut f64) -> f64> =
+            lib.get(b"modf").expect("load modf");
+        let logb: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"logb").expect("load logb");
+        let ilogb: libloading::Symbol<unsafe extern "C" fn(f64) -> i32> =
+            lib.get(b"ilogb").expect("load ilogb");
+        let nextafter: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
+            lib.get(b"nextafter").expect("load nextafter");
         let remainder: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
             lib.get(b"remainder").expect("load remainder");
         let pow: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
@@ -212,6 +251,12 @@ fn load_libm() -> LibmFns {
             tan: *tan,
             asin: *asin,
             acos: *acos,
+            asinh: *asinh,
+            acosh: *acosh,
+            atanh: *atanh,
+            erf: *erf,
+            erfc: *erfc,
+            exp10: *exp10,
             atan: *atan,
             atan2: *atan2,
             sinh: *sinh,
@@ -219,6 +264,13 @@ fn load_libm() -> LibmFns {
             tanh: *tanh,
             hypot: *hypot,
             fmod: *fmod,
+            fdim: *fdim,
+            fmax: *fmax,
+            fmin: *fmin,
+            modf: *modf,
+            logb: *logb,
+            ilogb: *ilogb,
+            nextafter: *nextafter,
             remainder: *remainder,
             pow: *pow,
             sqrt: *sqrt,
@@ -302,6 +354,36 @@ pub fn glibc_atan2(y: f64, x: f64) -> f64 {
 }
 
 #[inline(never)]
+pub fn glibc_asinh(x: f64) -> f64 {
+    unsafe { (libm().asinh)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_acosh(x: f64) -> f64 {
+    unsafe { (libm().acosh)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_atanh(x: f64) -> f64 {
+    unsafe { (libm().atanh)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_erf(x: f64) -> f64 {
+    unsafe { (libm().erf)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_erfc(x: f64) -> f64 {
+    unsafe { (libm().erfc)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_exp10(x: f64) -> f64 {
+    unsafe { (libm().exp10)(x) }
+}
+
+#[inline(never)]
 pub fn glibc_sinh(x: f64) -> f64 {
     unsafe { (libm().sinh)(x) }
 }
@@ -324,6 +406,43 @@ pub fn glibc_hypot(x: f64, y: f64) -> f64 {
 #[inline(never)]
 pub fn glibc_fmod(x: f64, y: f64) -> f64 {
     unsafe { (libm().fmod)(x, y) }
+}
+
+#[inline(never)]
+pub fn glibc_fdim(x: f64, y: f64) -> f64 {
+    unsafe { (libm().fdim)(x, y) }
+}
+
+#[inline(never)]
+pub fn glibc_fmax(x: f64, y: f64) -> f64 {
+    unsafe { (libm().fmax)(x, y) }
+}
+
+#[inline(never)]
+pub fn glibc_fmin(x: f64, y: f64) -> f64 {
+    unsafe { (libm().fmin)(x, y) }
+}
+
+#[inline(never)]
+pub fn glibc_modf(x: f64) -> (f64, f64) {
+    let mut ip = 0.0;
+    let frac = unsafe { (libm().modf)(x, &mut ip as *mut f64) };
+    (frac, ip)
+}
+
+#[inline(never)]
+pub fn glibc_logb(x: f64) -> f64 {
+    unsafe { (libm().logb)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_ilogb(x: f64) -> i32 {
+    unsafe { (libm().ilogb)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_nextafter(x: f64, y: f64) -> f64 {
+    unsafe { (libm().nextafter)(x, y) }
 }
 
 #[inline(never)]

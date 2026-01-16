@@ -43,6 +43,14 @@ name = "bench_log1p"
 harness = false
 
 [[bench]]
+name = "bench_logb"
+harness = false
+
+[[bench]]
+name = "bench_ilogb"
+harness = false
+
+[[bench]]
 name = "bench_sin"
 harness = false
 
@@ -71,6 +79,30 @@ name = "bench_atan2"
 harness = false
 
 [[bench]]
+name = "bench_asinh"
+harness = false
+
+[[bench]]
+name = "bench_acosh"
+harness = false
+
+[[bench]]
+name = "bench_atanh"
+harness = false
+
+[[bench]]
+name = "bench_erf"
+harness = false
+
+[[bench]]
+name = "bench_erfc"
+harness = false
+
+[[bench]]
+name = "bench_exp10"
+harness = false
+
+[[bench]]
 name = "bench_sinh"
 harness = false
 
@@ -88,6 +120,26 @@ harness = false
 
 [[bench]]
 name = "bench_fmod"
+harness = false
+
+[[bench]]
+name = "bench_nextafter"
+harness = false
+
+[[bench]]
+name = "bench_fdim"
+harness = false
+
+[[bench]]
+name = "bench_fmax"
+harness = false
+
+[[bench]]
+name = "bench_fmin"
+harness = false
+
+[[bench]]
+name = "bench_modf"
 harness = false
 
 [[bench]]

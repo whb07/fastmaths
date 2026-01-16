@@ -84,6 +84,49 @@ fn exp2_generic(x: f64) -> f64 {
     scale + scale * tmp
 }
 
+#[inline]
+pub(crate) fn exp2_with_tail_generic(x: f64, xtail: f64) -> f64 {
+    if x.is_nan() || xtail.is_nan() {
+        return f64::NAN;
+    }
+    if x.is_infinite() {
+        return if x.is_sign_positive() {
+            f64::INFINITY
+        } else {
+            0.0
+        };
+    }
+    let z = x + xtail;
+    if z >= 1024.0 {
+        return f64::INFINITY;
+    }
+    if z <= -1075.0 {
+        return 0.0;
+    }
+
+    let kd = z + EXP2_SHIFT;
+    let ki = f64_to_bits(kd);
+    let kd = kd - EXP2_SHIFT;
+    let r = (x - kd) + xtail;
+
+    let idx = ((ki as usize) & ((N - 1) as usize)) << 1;
+    let top = ki << (52 - EXP_TABLE_BITS);
+    let tail = f64_from_bits(unsafe { *EXP_TAB_U64.get_unchecked(idx) });
+    let sbits = unsafe { *EXP_TAB_U64.get_unchecked(idx + 1) }.wrapping_add(top);
+    let scale = f64_from_bits(sbits);
+
+    let r2 = r * r;
+    let tmp = tail + r * C1 + r2 * (C2 + r * C3) + r2 * r2 * (C4 + r * C5);
+
+    let k = (kd * N as f64) as i64;
+    let k_adj = k + (1023 * N as i64);
+    if k_adj < N as i64 || k_adj >= (2047 * N as i64) {
+        return specialcase(tmp, sbits, k);
+    }
+
+    scale + scale * tmp
+}
+
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "fma")]
 unsafe fn exp2_fma(x: f64) -> f64 {
@@ -131,6 +174,54 @@ unsafe fn exp2_fma(x: f64) -> f64 {
     unsafe { fma_f64(scale, tmp, scale) }
 }
 
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "fma")]
+unsafe fn exp2_with_tail_fma(x: f64, xtail: f64) -> f64 {
+    if x.is_nan() || xtail.is_nan() {
+        return f64::NAN;
+    }
+    if x.is_infinite() {
+        return if x.is_sign_positive() {
+            f64::INFINITY
+        } else {
+            0.0
+        };
+    }
+    let z = x + xtail;
+    if z >= 1024.0 {
+        return f64::INFINITY;
+    }
+    if z <= -1075.0 {
+        return 0.0;
+    }
+
+    let kd = z + EXP2_SHIFT;
+    let ki = f64_to_bits(kd);
+    let kd = kd - EXP2_SHIFT;
+    let r = (x - kd) + xtail;
+
+    let idx = ((ki as usize) & ((N - 1) as usize)) << 1;
+    let top = ki << (52 - EXP_TABLE_BITS);
+    let tail = f64_from_bits(unsafe { *EXP_TAB_U64.get_unchecked(idx) });
+    let sbits = unsafe { *EXP_TAB_U64.get_unchecked(idx + 1) }.wrapping_add(top);
+    let scale = f64_from_bits(sbits);
+
+    let r2 = r * r;
+    let t1 = unsafe { fma_f64(r, C1, tail) };
+    let t2 = unsafe { fma_f64(r, C3, C2) };
+    let t3 = unsafe { fma_f64(r, C5, C4) };
+    let tmp = unsafe { fma_f64(r2, t2, t1) };
+    let tmp = unsafe { fma_f64(r2 * r2, t3, tmp) };
+
+    let k = (kd * N as f64) as i64;
+    let k_adj = k + (1023 * N as i64);
+    if k_adj < N as i64 || k_adj >= (2047 * N as i64) {
+        return specialcase(tmp, sbits, k);
+    }
+
+    unsafe { fma_f64(scale, tmp, scale) }
+}
+
 #[inline]
 pub fn exp2(x: f64) -> f64 {
     #[cfg(target_arch = "x86_64")]
@@ -139,4 +230,14 @@ pub fn exp2(x: f64) -> f64 {
         return unsafe { exp2_fma(x) };
     }
     exp2_generic(x)
+}
+
+#[inline]
+pub(crate) fn exp2_with_tail(x: f64, xtail: f64) -> f64 {
+    #[cfg(target_arch = "x86_64")]
+    if super::cpu_has_fma() {
+        // SAFETY: guarded by CPUID.
+        return unsafe { exp2_with_tail_fma(x, xtail) };
+    }
+    exp2_with_tail_generic(x, xtail)
 }

@@ -396,7 +396,8 @@ pub(crate) fn exp_with_tail_generic(x: f64, xtail: f64) -> f64 {
         return 0.0;
     }
 
-    let z = x * INV_LN2_N;
+    let mut z = x * INV_LN2_N;
+    z += xtail * INV_LN2_N;
     let kd = z + SHIFT;
     let ki = f64_to_bits(kd);
     let kd = kd - SHIFT;
