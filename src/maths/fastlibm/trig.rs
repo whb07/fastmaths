@@ -750,7 +750,7 @@ fn adjust_gor(gor: f64, k: i32) -> f64 {
 }
 
 #[inline(always)]
-fn branred(x: f64) -> (i32, f64, f64) {
+pub(super) fn branred(x: f64) -> (i32, f64, f64) {
     let mut r = [0.0f64; 6];
     let mut sum = 0.0;
 

@@ -15,7 +15,63 @@ libloading = "0.8"
 proptest = "1.6"
 
 [[bench]]
-name = "math_bench"
+name = "bench_exp"
+harness = false
+
+[[bench]]
+name = "bench_exp2"
+harness = false
+
+[[bench]]
+name = "bench_expm1"
+harness = false
+
+[[bench]]
+name = "bench_ln"
+harness = false
+
+[[bench]]
+name = "bench_log2"
+harness = false
+
+[[bench]]
+name = "bench_log10"
+harness = false
+
+[[bench]]
+name = "bench_sin"
+harness = false
+
+[[bench]]
+name = "bench_cos"
+harness = false
+
+[[bench]]
+name = "bench_tan"
+harness = false
+
+[[bench]]
+name = "bench_atan"
+harness = false
+
+[[bench]]
+name = "bench_atan2"
+harness = false
+
+[[bench]]
+name = "bench_hypot"
+harness = false
+
+[[bench]]
+name = "bench_pow"
+harness = false
+
+[[bench]]
+name = "bench_sqrt"
+harness = false
+
+[[bench]]
+name = "bench_cbrt"
 harness = false
 
 [profile.bench]

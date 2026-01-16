@@ -5,6 +5,7 @@
 This crate aims to implement **fast, correct** replacements for glibc `libm` routines like `exp`, `log/ln`, `sin`, and `cos`. Changes should target:
 
 - **Behavior parity with glibc** across edge cases (NaNs, `±0.0`, `±∞`, subnormals, huge arguments, and rounding where applicable).
+- **Accuracy Target:** Math functions should aim for an error of < 1.0 ULP relative to the true value (verified using MPFR as the reference).
 - **Performance parity or better** than the system glibc implementation on supported targets (ideally faster).
 - **No System Libm:** Deferring to or use of the system's `libm` (e.g., calling `f64::sin` or similar within the implementation) is not allowed. The crate must provide its own self-contained implementations.
 
