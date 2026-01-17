@@ -5,19 +5,41 @@ A high-performance, `no_std` Rust math library aiming for **glibc parity**, **sp
 ## Features
 
 - **Glibc Parity:** Implements core `libm` functions with behavior matching the GNU C Library (NaNs, infinity, subnormals, and edge cases).
-- **High Accuracy:** All functions are verified against **MPFR** (Multiple Precision Floating-Point Reliably) to ensure an error of ≤ 1.0 ULP (Units in the Last Place).
+- **High Accuracy:** Functions are verified against **MPFR** (Multiple Precision Floating-Point Reliably) to ensure an error of ≤ 1.0 ULP (Units in the Last Place).
 - **Optimized for Speed:** Uses table-driven algorithms and hardware intrinsics (e.g., FMA, SSE2) where available to meet or exceed the performance of the system `libm`.
 - **`no_std` Support:** Designed for embedded, kernel, or other environments where the standard library is not available.
 - **Zero External Dependencies:** Self-contained implementation (does not link to the system `libm`).
 
 ## Implemented Functions
 
-| Category | Functions | Status |
-| :--- | :--- | :--- |
-| **Exponential** | `exp`, `exp2`, `expm1` | Optimized (≤ 1.0 ULP) |
-| **Logarithmic** | `log` (`ln`), `log2`, `log10` | Optimized (≤ 1.0 ULP) |
-| **Trigonometric** | `sin`, `cos`, `tan`, `atan`, `atan2` | Optimized (≤ 1.0 ULP) |
-| **Power/Root** | `pow`, `sqrt`, `cbrt`, `hypot` | Optimized (≤ 1.0 ULP) |
+### Elementary & Power
+
+- **Exponential:** `exp`, `exp2`, `expm1`, `exp10`
+- **Logarithmic:** `ln`/`log`, `log2`, `log10`, `log1p`
+- **Trigonometric:** `sin`, `cos`, `tan`, `atan`, `atan2`, `sincos`
+- **Power/Root:** `pow`, `sqrt`, `cbrt`, `hypot`
+
+### Hyperbolic & Inverse Hyperbolic
+
+- **Hyperbolic:** `sinh`, `cosh`, `tanh`
+- **Inverse Hyperbolic:** `asinh`, `acosh`, `atanh`
+
+### Special Functions
+
+- **Gamma family:** `lgamma`, `tgamma`
+- **Error functions:** `erf`, `erfc`
+
+### IEEE-754 Helpers & Bit-Level Utilities
+
+- **Classification:** `fpclassify`, `isfinite`, `isinf`, `isnan`, `signbit`
+- **Rounding:** `rint`, `nearbyint`, `round`, `trunc`, `floor`, `ceil`, `lrint`, `llrint`, `lround`, `llround`
+- **Scaling:** `frexp`, `ldexp`, `scalbn`, `scalbln`
+- **Min/Max/Delta:** `fmin`, `fmax`, `fdim`
+- **Remainders:** `fmod`, `remainder`, `remquo`
+- **Adjacency:** `nextafter`
+- **Exponent access:** `logb`, `ilogb`
+- **FMA:** `fma`
+- **Decomposition:** `modf`
 
 ## Accuracy Standards
 
@@ -35,12 +57,14 @@ Accuracy is the primary goal of this project. Every function is tested using:
 - **`cbrt`**: ~18% speedup vs glibc
 - **`cos`**: ~37% speedup vs glibc
 
+Across the current benchmark suite (84 groups, see `latest_bench_foo.txt`), fastlibm outperforms glibc in every group.
+
 To run the full suite of benchmarks:
 ```bash
 cargo bench
 ```
 
-*Note: For maximum performance, compile with `RUSTFLAGS="-C target-cpu=native"` to enable hardware-specific optimizations like FMA and SSE2 instructions.*
+*Note: For maximum performance, compile with `RUSTFLAGS="-C target-cpu=native"` to enable hardware-specific optimizations like FMA and SSE2 instructions. For glibc comparisons, point the benches at a locally-built `libm` via `FASTLIBM_GLIBC_LIBM` or use `./build_libm.sh`.*
 
 ## Usage
 
