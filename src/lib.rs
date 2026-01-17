@@ -105,6 +105,99 @@ mod tests {
     }
 
     #[cfg(feature = "mpfr")]
+    fn mpfr_floor_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.floor_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_ceil_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.ceil_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_trunc_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.trunc_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_round_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.round_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_rint_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.round_even_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_fma_f64(x: f64, y: f64, z: f64) -> f64 {
+        let mut a = Float::with_val(MPFR_PREC, x);
+        let b = Float::with_val(MPFR_PREC, y);
+        let c = Float::with_val(MPFR_PREC, z);
+        a.mul_add_mut(&b, &c);
+        a.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_frexp_f64(x: f64) -> (f64, i32) {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        let exp = v.frexp_mut();
+        (v.to_f64(), exp)
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_ldexp_f64(x: f64, n: i32) -> f64 {
+        let v = Float::with_val(MPFR_PREC, x);
+        v.as_shl(n).to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_scalbln_f64(x: f64, n: i64) -> f64 {
+        if n > i32::MAX as i64 {
+            return if x.is_sign_negative() {
+                f64::NEG_INFINITY
+            } else {
+                f64::INFINITY
+            };
+        }
+        if n < i32::MIN as i64 {
+            return 0.0_f64.copysign(x);
+        }
+        mpfr_ldexp_f64(x, n as i32)
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn clamp_f64_to_i64(x: f64) -> i64 {
+        if x.is_nan() {
+            return i64::MIN;
+        }
+        if !x.is_finite() {
+            return if x.is_sign_negative() {
+                i64::MIN
+            } else {
+                i64::MAX
+            };
+        }
+        if x > i64::MAX as f64 {
+            i64::MAX
+        } else if x < i64::MIN as f64 {
+            i64::MIN
+        } else {
+            x as i64
+        }
+    }
+
+    #[cfg(feature = "mpfr")]
     fn mpfr_sin_f64(x: f64) -> f64 {
         let mut v = Float::with_val(MPFR_PREC, x);
         v.sin_mut();
@@ -243,6 +336,20 @@ mod tests {
     fn mpfr_exp10_f64(x: f64) -> f64 {
         let mut v = Float::with_val(MPFR_PREC, x);
         v.exp10_mut();
+        v.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_lgamma_f64(x: f64) -> f64 {
+        let v = Float::with_val(MPFR_PREC, x);
+        let (lg, _) = v.ln_abs_gamma();
+        lg.to_f64()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn mpfr_tgamma_f64(x: f64) -> f64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.gamma_mut();
         v.to_f64()
     }
 
@@ -407,6 +514,192 @@ mod tests {
     }
 
     #[cfg(feature = "mpfr")]
+    fn floor_reference(x: f64) -> f64 {
+        mpfr_floor_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn floor_reference(x: f64) -> f64 {
+        x.floor()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn ceil_reference(x: f64) -> f64 {
+        mpfr_ceil_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn ceil_reference(x: f64) -> f64 {
+        x.ceil()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn trunc_reference(x: f64) -> f64 {
+        mpfr_trunc_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn trunc_reference(x: f64) -> f64 {
+        x.trunc()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn round_reference(x: f64) -> f64 {
+        mpfr_round_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn round_reference(x: f64) -> f64 {
+        x.round()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn rint_reference(x: f64) -> f64 {
+        mpfr_rint_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn rint_reference(x: f64) -> f64 {
+        x.round()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn nearbyint_reference(x: f64) -> f64 {
+        mpfr_rint_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn nearbyint_reference(x: f64) -> f64 {
+        x.round()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn lrint_reference(x: f64) -> i64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.round_even_mut();
+        clamp_f64_to_i64(v.to_f64())
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn lrint_reference(x: f64) -> i64 {
+        x.round() as i64
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn llrint_reference(x: f64) -> i64 {
+        lrint_reference(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn llrint_reference(x: f64) -> i64 {
+        x.round() as i64
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn lround_reference(x: f64) -> i64 {
+        let mut v = Float::with_val(MPFR_PREC, x);
+        v.round_mut();
+        clamp_f64_to_i64(v.to_f64())
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn lround_reference(x: f64) -> i64 {
+        x.round() as i64
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn llround_reference(x: f64) -> i64 {
+        lround_reference(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn llround_reference(x: f64) -> i64 {
+        x.round() as i64
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn fma_reference(x: f64, y: f64, z: f64) -> f64 {
+        mpfr_fma_f64(x, y, z)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn fma_reference(x: f64, y: f64, z: f64) -> f64 {
+        x.mul_add(y, z)
+    }
+
+    fn copysign_reference(x: f64, y: f64) -> f64 {
+        x.copysign(y)
+    }
+
+    fn fabs_reference(x: f64) -> f64 {
+        x.abs()
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn frexp_reference(x: f64) -> (f64, i32) {
+        mpfr_frexp_f64(x)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn frexp_reference(x: f64) -> (f64, i32) {
+        fastlibm::frexp(x)
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn ldexp_reference(x: f64, n: i32) -> f64 {
+        mpfr_ldexp_f64(x, n)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn ldexp_reference(x: f64, n: i32) -> f64 {
+        fastlibm::ldexp(x, n)
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn scalbn_reference(x: f64, n: i32) -> f64 {
+        mpfr_ldexp_f64(x, n)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn scalbn_reference(x: f64, n: i32) -> f64 {
+        fastlibm::scalbn(x, n)
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn scalbln_reference(x: f64, n: i64) -> f64 {
+        mpfr_scalbln_f64(x, n)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn scalbln_reference(x: f64, n: i64) -> f64 {
+        fastlibm::scalbln(x, n)
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn remquo_reference(x: f64, y: f64) -> (f64, i32) {
+        if x.is_nan() || y.is_nan() || y == 0.0 || x.is_infinite() {
+            return (f64::NAN, 0);
+        }
+        let mut q = Float::with_val(MPFR_PREC, x);
+        let vy = Float::with_val(MPFR_PREC, y);
+        q /= &vy;
+        q.round_even_mut();
+        let q_int = clamp_f64_to_i64(q.to_f64());
+        let mut r = Float::with_val(MPFR_PREC, x);
+        r -= &vy * &q;
+        let mut quo = (q_int.abs() & 0x7) as i32;
+        if q_int < 0 {
+            quo = -quo;
+        }
+        (r.to_f64(), quo)
+    }
+
+    #[cfg(not(feature = "mpfr"))]
+    fn remquo_reference(x: f64, y: f64) -> (f64, i32) {
+        fastlibm::remquo(x, y)
+    }
+
+    #[cfg(feature = "mpfr")]
     fn sin_reference(x: f64) -> f64 {
         if x.abs() <= MPFR_TRIG_LIMIT {
             mpfr_sin_f64(x)
@@ -553,19 +846,9 @@ mod tests {
         mpfr_erf_f64(x)
     }
 
-    #[cfg(not(feature = "mpfr"))]
-    fn erf_reference(_x: f64) -> f64 {
-        f64::NAN
-    }
-
     #[cfg(feature = "mpfr")]
     fn erfc_reference(x: f64) -> f64 {
         mpfr_erfc_f64(x)
-    }
-
-    #[cfg(not(feature = "mpfr"))]
-    fn erfc_reference(_x: f64) -> f64 {
-        f64::NAN
     }
 
     #[cfg(feature = "mpfr")]
@@ -576,6 +859,16 @@ mod tests {
     #[cfg(not(feature = "mpfr"))]
     fn exp10_reference(x: f64) -> f64 {
         10.0f64.powf(x)
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn lgamma_reference(x: f64) -> f64 {
+        mpfr_lgamma_f64(x)
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn tgamma_reference(x: f64) -> f64 {
+        mpfr_tgamma_f64(x)
     }
 
     #[cfg(feature = "mpfr")]
@@ -1400,6 +1693,7 @@ mod tests {
         inputs
     }
 
+    #[cfg(feature = "mpfr")]
     fn erf_inputs() -> Vec<f64> {
         let mut inputs = Vec::new();
         let specials = [
@@ -1415,6 +1709,7 @@ mod tests {
         inputs
     }
 
+    #[cfg(feature = "mpfr")]
     fn erfc_inputs() -> Vec<f64> {
         erf_inputs()
     }
@@ -1429,6 +1724,44 @@ mod tests {
         }
         for i in -20..=20 {
             push_unique(&mut inputs, (i as f64) * 0.5);
+        }
+        inputs
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn lgamma_inputs() -> Vec<f64> {
+        let mut inputs = Vec::new();
+        let specials = [
+            -10.5, -9.5, -4.5, -3.5, -2.5, -1.5, -0.5, -4.0, -3.0, -2.0, -1.0, -0.0, 0.0, 0.1, 0.5,
+            1.0, 1.5, 2.0, 3.0, 10.0, 50.0, 100.0, 170.0,
+        ];
+        for &x in &specials {
+            push_unique(&mut inputs, x);
+        }
+        for i in -20..=20 {
+            let base = i as f64;
+            push_unique(&mut inputs, base + 0.25);
+            push_unique(&mut inputs, base + 0.5);
+            push_unique(&mut inputs, base + 0.75);
+        }
+        inputs
+    }
+
+    #[cfg(feature = "mpfr")]
+    fn tgamma_inputs() -> Vec<f64> {
+        let mut inputs = Vec::new();
+        let specials = [
+            -10.5, -9.5, -4.5, -3.5, -2.5, -1.5, -0.5, -4.0, -3.0, -2.0, -1.0, -0.0, 0.0, 0.1, 0.5,
+            1.0, 1.5, 2.0, 3.0, 10.0, 50.0, 100.0, 170.0,
+        ];
+        for &x in &specials {
+            push_unique(&mut inputs, x);
+        }
+        for i in -20..=20 {
+            let base = i as f64;
+            push_unique(&mut inputs, base + 0.25);
+            push_unique(&mut inputs, base + 0.5);
+            push_unique(&mut inputs, base + 0.75);
         }
         inputs
     }
@@ -1490,6 +1823,123 @@ mod tests {
             push_unique(&mut inputs, (i as f64) * 0.1);
         }
         inputs
+    }
+
+    fn rounding_inputs() -> Vec<f64> {
+        let mut inputs = Vec::new();
+        let specials = [
+            f64::NAN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            -3.5,
+            -2.5,
+            -1.5,
+            -1.0,
+            -0.9,
+            -0.5,
+            -0.1,
+            -0.0,
+            0.0,
+            0.1,
+            0.5,
+            0.9,
+            1.0,
+            1.5,
+            2.5,
+            3.5,
+            1e6,
+            -1e6,
+            2f64.powi(52),
+            -2f64.powi(52),
+        ];
+        for &x in &specials {
+            push_unique(&mut inputs, x);
+        }
+        for i in -100..=100 {
+            push_unique(&mut inputs, (i as f64) * 0.25);
+        }
+        inputs
+    }
+
+    fn scaling_inputs() -> Vec<f64> {
+        let mut inputs = Vec::new();
+        let specials = [
+            0.0,
+            -0.0,
+            f64::MIN_POSITIVE,
+            -f64::MIN_POSITIVE,
+            1e-300,
+            -1e-300,
+            1e-10,
+            -1e-10,
+            1.0,
+            -1.0,
+            2.0,
+            -2.0,
+            1024.0,
+            -1024.0,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+        ];
+        for &x in &specials {
+            push_unique(&mut inputs, x);
+        }
+        for i in -100..=100 {
+            push_unique(&mut inputs, (i as f64) * 0.5);
+        }
+        inputs
+    }
+
+    fn scalbn_inputs() -> Vec<(f64, i32)> {
+        vec![
+            (1.0, 0),
+            (1.0, 1),
+            (1.0, -1),
+            (1e-300, 10),
+            (1e-300, -10),
+            (1e300, -10),
+            (-2.5, 3),
+            (-2.5, -3),
+        ]
+    }
+
+    fn scalbln_inputs() -> Vec<(f64, i64)> {
+        vec![
+            (1.0, 0),
+            (1.0, 1),
+            (1.0, -1),
+            (1e-300, 10),
+            (1e-300, -10),
+            (1e300, -10),
+            (-2.5, 3),
+            (-2.5, -3),
+            (1.0, i64::from(i32::MAX)),
+            (1.0, i64::from(i32::MIN)),
+        ]
+    }
+
+    fn remquo_inputs() -> Vec<(f64, f64)> {
+        vec![
+            (5.3, 2.0),
+            (-5.3, 2.0),
+            (5.3, -2.0),
+            (-5.3, -2.0),
+            (1.0, 0.5),
+            (10.0, 3.0),
+            (1e-10, 1e-3),
+            (1e10, 3.0),
+        ]
+    }
+
+    fn fma_inputs() -> Vec<(f64, f64, f64)> {
+        vec![
+            (0.0, 0.0, 0.0),
+            (1.0, 2.0, 3.0),
+            (-1.0, 2.0, 3.0),
+            (1e300, 1e-300, 1.0),
+            (1e200, 1e200, f64::NEG_INFINITY),
+            (1.2345, 6.789, -3.21),
+        ]
     }
 
     fn fdim_inputs() -> Vec<(f64, f64)> {
@@ -1708,6 +2158,203 @@ mod tests {
             } else {
                 assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("log1p({x})"));
             }
+        }
+    }
+
+    #[test]
+    fn rounding_special_cases() {
+        assert!(fastlibm::floor(f64::NAN).is_nan());
+        assert!(fastlibm::ceil(f64::NAN).is_nan());
+        assert!(fastlibm::trunc(f64::NAN).is_nan());
+        assert!(fastlibm::round(f64::NAN).is_nan());
+        assert!(fastlibm::rint(f64::NAN).is_nan());
+        assert!(fastlibm::nearbyint(f64::NAN).is_nan());
+
+        assert_eq!(fastlibm::floor(f64::INFINITY), f64::INFINITY);
+        assert_eq!(fastlibm::ceil(f64::INFINITY), f64::INFINITY);
+        assert_eq!(fastlibm::trunc(f64::INFINITY), f64::INFINITY);
+        assert_eq!(fastlibm::round(f64::INFINITY), f64::INFINITY);
+        assert_eq!(fastlibm::rint(f64::INFINITY), f64::INFINITY);
+        assert_eq!(fastlibm::nearbyint(f64::INFINITY), f64::INFINITY);
+
+        assert_eq!(fastlibm::floor(f64::NEG_INFINITY), f64::NEG_INFINITY);
+        assert_eq!(fastlibm::ceil(f64::NEG_INFINITY), f64::NEG_INFINITY);
+        assert_eq!(fastlibm::trunc(f64::NEG_INFINITY), f64::NEG_INFINITY);
+        assert_eq!(fastlibm::round(f64::NEG_INFINITY), f64::NEG_INFINITY);
+        assert_eq!(fastlibm::rint(f64::NEG_INFINITY), f64::NEG_INFINITY);
+        assert_eq!(fastlibm::nearbyint(f64::NEG_INFINITY), f64::NEG_INFINITY);
+
+        assert_eq!(fastlibm::trunc(-0.0).to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(fastlibm::ceil(-0.3).to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(fastlibm::round(-0.3).to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(fastlibm::rint(-0.3).to_bits(), (-0.0_f64).to_bits());
+    }
+
+    #[test]
+    fn rounding_matches_reference_ulps() {
+        for &x in &rounding_inputs() {
+            assert_ulp_eq(
+                fastlibm::floor(x),
+                floor_reference(x),
+                MAX_ULP_TOL,
+                &format!("floor({x})"),
+            );
+            assert_ulp_eq(
+                fastlibm::ceil(x),
+                ceil_reference(x),
+                MAX_ULP_TOL,
+                &format!("ceil({x})"),
+            );
+            assert_ulp_eq(
+                fastlibm::trunc(x),
+                trunc_reference(x),
+                MAX_ULP_TOL,
+                &format!("trunc({x})"),
+            );
+            assert_ulp_eq(
+                fastlibm::round(x),
+                round_reference(x),
+                MAX_ULP_TOL,
+                &format!("round({x})"),
+            );
+            assert_ulp_eq(
+                fastlibm::rint(x),
+                rint_reference(x),
+                MAX_ULP_TOL,
+                &format!("rint({x})"),
+            );
+            assert_ulp_eq(
+                fastlibm::nearbyint(x),
+                nearbyint_reference(x),
+                MAX_ULP_TOL,
+                &format!("nearbyint({x})"),
+            );
+        }
+    }
+
+    #[test]
+    fn int_rounding_matches_reference() {
+        for &x in &rounding_inputs() {
+            assert_eq!(fastlibm::lrint(x), lrint_reference(x), "lrint({x})");
+            assert_eq!(fastlibm::llrint(x), llrint_reference(x), "llrint({x})");
+            assert_eq!(fastlibm::lround(x), lround_reference(x), "lround({x})");
+            assert_eq!(fastlibm::llround(x), llround_reference(x), "llround({x})");
+        }
+    }
+
+    #[test]
+    fn copysign_fabs_special_cases() {
+        assert_eq!(fastlibm::fabs(-0.0).to_bits(), 0.0f64.to_bits());
+        assert_eq!(fastlibm::copysign(1.0, -0.0).to_bits(), (-1.0f64).to_bits());
+        assert!(fastlibm::fabs(f64::NAN).is_nan());
+    }
+
+    #[test]
+    fn copysign_fabs_matches_reference() {
+        let inputs = [
+            (1.0, 1.0),
+            (1.0, -1.0),
+            (-1.0, 1.0),
+            (-1.0, -1.0),
+            (0.0, -1.0),
+            (-0.0, 1.0),
+            (1e-300, -1.0),
+            (-1e-300, 1.0),
+            (1e6, -1e6),
+        ];
+        for &(x, y) in &inputs {
+            let actual = fastlibm::copysign(x, y);
+            let expected = copysign_reference(x, y);
+            assert_eq!(
+                actual.to_bits(),
+                expected.to_bits(),
+                "copysign({x}, {y}) expected {expected}, got {actual}"
+            );
+        }
+        for &(x, _) in &inputs {
+            let actual = fastlibm::fabs(x);
+            let expected = fabs_reference(x);
+            if expected.is_nan() {
+                assert!(actual.is_nan(), "fabs({x}) expected NaN");
+            } else {
+                assert_eq!(
+                    actual.to_bits(),
+                    expected.to_bits(),
+                    "fabs({x}) expected {expected}, got {actual}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn fma_matches_reference_ulps() {
+        for &(x, y, z) in &fma_inputs() {
+            let actual = fastlibm::fma(x, y, z);
+            let expected = fma_reference(x, y, z);
+            if expected.is_nan() {
+                assert!(actual.is_nan(), "fma({x}, {y}, {z}) expected NaN");
+            } else {
+                assert_ulp_eq(
+                    actual,
+                    expected,
+                    MAX_ULP_TOL,
+                    &format!("fma({x}, {y}, {z})"),
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn scaling_special_cases() {
+        let (m, e) = fastlibm::frexp(0.0);
+        assert_eq!(m.to_bits(), 0.0f64.to_bits());
+        assert_eq!(e, 0);
+        let (m, e) = fastlibm::frexp(f64::INFINITY);
+        assert_eq!(m, f64::INFINITY);
+        assert_eq!(e, 0);
+        assert_eq!(fastlibm::ldexp(f64::INFINITY, 5), f64::INFINITY);
+        assert_eq!(fastlibm::scalbn(f64::INFINITY, -5), f64::INFINITY);
+    }
+
+    #[test]
+    fn scaling_matches_reference_ulps() {
+        for &x in &scaling_inputs() {
+            let (m_a, e_a) = fastlibm::frexp(x);
+            let (m_e, e_e) = frexp_reference(x);
+            assert_ulp_eq(m_a, m_e, MAX_ULP_TOL, &format!("frexp({x}) mantissa"));
+            assert_eq!(e_a, e_e, "frexp({x}) exponent");
+        }
+        for &(x, n) in &scalbn_inputs() {
+            let actual = fastlibm::scalbn(x, n);
+            let expected = scalbn_reference(x, n);
+            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("scalbn({x},{n})"));
+            let actual = fastlibm::ldexp(x, n);
+            let expected = ldexp_reference(x, n);
+            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("ldexp({x},{n})"));
+        }
+        for &(x, n) in &scalbln_inputs() {
+            let actual = fastlibm::scalbln(x, n);
+            let expected = scalbln_reference(x, n);
+            assert_ulp_eq(actual, expected, MAX_ULP_TOL, &format!("scalbln({x},{n})"));
+        }
+    }
+
+    #[test]
+    fn remquo_matches_reference_ulps() {
+        for &(x, y) in &remquo_inputs() {
+            let (actual_r, actual_q) = fastlibm::remquo(x, y);
+            let (expected_r, expected_q) = remquo_reference(x, y);
+            if expected_r.is_nan() {
+                assert!(actual_r.is_nan(), "remquo({x}, {y}) expected NaN");
+            } else {
+                assert_ulp_eq(
+                    actual_r,
+                    expected_r,
+                    MAX_ULP_TOL,
+                    &format!("remquo({x}, {y})"),
+                );
+            }
+            assert_eq!(actual_q, expected_q, "remquo({x}, {y}) quotient");
         }
     }
 
@@ -1940,6 +2587,43 @@ mod tests {
             let actual = fastlibm::exp10(x);
             let expected = exp10_reference(x);
             assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("exp10({x})"));
+        }
+    }
+
+    #[test]
+    fn lgamma_tgamma_special_cases() {
+        assert!(fastlibm::lgamma(f64::NAN).is_nan());
+        assert_eq!(fastlibm::lgamma(f64::INFINITY), f64::INFINITY);
+        assert_eq!(fastlibm::lgamma(0.0), f64::INFINITY);
+        assert_eq!(fastlibm::lgamma(-0.0), f64::INFINITY);
+        assert_eq!(fastlibm::lgamma(-1.0), f64::INFINITY);
+        assert_eq!(fastlibm::lgamma(-2.0), f64::INFINITY);
+
+        assert!(fastlibm::tgamma(f64::NAN).is_nan());
+        assert_eq!(fastlibm::tgamma(f64::INFINITY), f64::INFINITY);
+        assert_eq!(fastlibm::tgamma(1.0), 1.0);
+        assert_eq!(fastlibm::tgamma(2.0), 1.0);
+        assert_eq!(fastlibm::tgamma(0.5), core::f64::consts::PI.sqrt());
+        assert_eq!(fastlibm::tgamma(0.0), f64::INFINITY);
+        assert_eq!(fastlibm::tgamma(-0.0), f64::NEG_INFINITY);
+        assert!(fastlibm::tgamma(-1.0).is_nan());
+        assert!(fastlibm::tgamma(-2.0).is_nan());
+    }
+
+    #[test]
+    fn lgamma_tgamma_matches_reference_ulps() {
+        #[cfg(feature = "mpfr")]
+        {
+            for &x in &lgamma_inputs() {
+                let actual = fastlibm::lgamma(x);
+                let expected = lgamma_reference(x);
+                assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("lgamma({x})"));
+            }
+            for &x in &tgamma_inputs() {
+                let actual = fastlibm::tgamma(x);
+                let expected = tgamma_reference(x);
+                assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("tgamma({x})"));
+            }
         }
     }
 
@@ -2396,6 +3080,8 @@ mod tests {
         let log2: libloading::Symbol<CFn> = unsafe { lib.get(b"log2").unwrap() };
         let log10: libloading::Symbol<CFn> = unsafe { lib.get(b"log10").unwrap() };
         let log1p: libloading::Symbol<CFn> = unsafe { lib.get(b"log1p").unwrap() };
+        let lgamma: libloading::Symbol<CFn> = unsafe { lib.get(b"lgamma").unwrap() };
+        let tgamma: libloading::Symbol<CFn> = unsafe { lib.get(b"tgamma").unwrap() };
         let sin: libloading::Symbol<CFn> = unsafe { lib.get(b"sin").unwrap() };
         let cos: libloading::Symbol<CFn> = unsafe { lib.get(b"cos").unwrap() };
         let tan: libloading::Symbol<CFn> = unsafe { lib.get(b"tan").unwrap() };
@@ -2463,6 +3149,26 @@ mod tests {
             let g = unsafe { log1p(x) };
             let f = fastlibm::log1p(x);
             assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist log1p({x})"));
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -20.0, 20.0);
+            if x <= 0.0 && x == x.trunc() {
+                continue;
+            }
+            let g = unsafe { lgamma(x) };
+            let f = fastlibm::lgamma(x);
+            assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist lgamma({x})"));
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -20.0, 20.0);
+            if x <= 0.0 && x == x.trunc() {
+                continue;
+            }
+            let g = unsafe { tgamma(x) };
+            let f = fastlibm::tgamma(x);
+            assert_ulp_eq_glibc(f, g, 1.0, &format!("glibc dist tgamma({x})"));
         }
 
         for _ in 0..samples {
@@ -2613,6 +3319,8 @@ mod tests {
         let log2: libloading::Symbol<CFn> = unsafe { lib.get(b"log2").unwrap() };
         let log10: libloading::Symbol<CFn> = unsafe { lib.get(b"log10").unwrap() };
         let log1p: libloading::Symbol<CFn> = unsafe { lib.get(b"log1p").unwrap() };
+        let lgamma: libloading::Symbol<CFn> = unsafe { lib.get(b"lgamma").unwrap() };
+        let tgamma: libloading::Symbol<CFn> = unsafe { lib.get(b"tgamma").unwrap() };
         let atan: libloading::Symbol<CFn> = unsafe { lib.get(b"atan").unwrap() };
         let atan2: libloading::Symbol<CFn2> = unsafe { lib.get(b"atan2").unwrap() };
         let asin: libloading::Symbol<CFn> = unsafe { lib.get(b"asin").unwrap() };
@@ -2770,6 +3478,40 @@ mod tests {
             assert!(
                 ulp_f <= ulp_g,
                 "fast log1p ulp {ulp_f} > glibc {ulp_g} at {x}"
+            );
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -20.0, 20.0);
+            if x <= 0.0 && x == x.trunc() {
+                continue;
+            }
+            let mp = mpfr_lgamma_f64(x);
+            let g = unsafe { lgamma(x) };
+            let f = fastlibm::lgamma(x);
+            let ulp_f = ulp_error(f, mp);
+            let ulp_g = ulp_error(g, mp);
+            assert!(ulp_f <= 1.0, "mpfr lgamma ulp {ulp_f} > 1 at {x}");
+            assert!(
+                ulp_f <= ulp_g,
+                "fast lgamma ulp {ulp_f} > glibc {ulp_g} at {x}"
+            );
+        }
+
+        for _ in 0..samples {
+            let x = rand_range(&mut state, -20.0, 20.0);
+            if x <= 0.0 && x == x.trunc() {
+                continue;
+            }
+            let mp = mpfr_tgamma_f64(x);
+            let g = unsafe { tgamma(x) };
+            let f = fastlibm::tgamma(x);
+            let ulp_f = ulp_error(f, mp);
+            let ulp_g = ulp_error(g, mp);
+            assert!(ulp_f <= 1.0, "mpfr tgamma ulp {ulp_f} > 1 at {x}");
+            assert!(
+                ulp_f <= ulp_g,
+                "fast tgamma ulp {ulp_f} > glibc {ulp_g} at {x}"
             );
         }
 
@@ -3348,6 +4090,24 @@ mod tests {
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("exp10({x})"));
         }
 
+        #[cfg(feature = "mpfr")]
+        #[test]
+        fn ptest_lgamma(x in -20.0..20.0_f64) {
+            prop_assume!(!(x <= 0.0 && x == x.trunc()));
+            let actual = fastlibm::lgamma(x);
+            let expected = lgamma_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("lgamma({x})"));
+        }
+
+        #[cfg(feature = "mpfr")]
+        #[test]
+        fn ptest_tgamma(x in -20.0..20.0_f64) {
+            prop_assume!(!(x <= 0.0 && x == x.trunc()));
+            let actual = fastlibm::tgamma(x);
+            let expected = tgamma_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("tgamma({x})"));
+        }
+
         #[test]
         fn ptest_logb(x in -1e300..1e300_f64) {
             if x != 0.0 {
@@ -3372,6 +4132,114 @@ mod tests {
             let (frac_e, int_e) = modf_reference(x);
             assert_ulp_eq(frac, frac_e, PROPTEST_ULP_TOL, &format!("modf frac({x})"));
             assert_ulp_eq(int, int_e, PROPTEST_ULP_TOL, &format!("modf int({x})"));
+        }
+
+        #[test]
+        fn ptest_floor(x in -1e6..1e6_f64) {
+            let actual = fastlibm::floor(x);
+            let expected = floor_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("floor({x})"));
+        }
+
+        #[test]
+        fn ptest_ceil(x in -1e6..1e6_f64) {
+            let actual = fastlibm::ceil(x);
+            let expected = ceil_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("ceil({x})"));
+        }
+
+        #[test]
+        fn ptest_trunc(x in -1e6..1e6_f64) {
+            let actual = fastlibm::trunc(x);
+            let expected = trunc_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("trunc({x})"));
+        }
+
+        #[test]
+        fn ptest_round(x in -1e6..1e6_f64) {
+            let actual = fastlibm::round(x);
+            let expected = round_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("round({x})"));
+        }
+
+        #[test]
+        fn ptest_rint(x in -1e6..1e6_f64) {
+            let actual = fastlibm::rint(x);
+            let expected = rint_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("rint({x})"));
+        }
+
+        #[test]
+        fn ptest_nearbyint(x in -1e6..1e6_f64) {
+            let actual = fastlibm::nearbyint(x);
+            let expected = nearbyint_reference(x);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("nearbyint({x})"));
+        }
+
+        #[test]
+        fn ptest_lrint(x in -1e6..1e6_f64) {
+            let actual = fastlibm::lrint(x);
+            let expected = lrint_reference(x);
+            assert_eq!(actual, expected, "lrint({x})");
+        }
+
+        #[test]
+        fn ptest_llrint(x in -1e6..1e6_f64) {
+            let actual = fastlibm::llrint(x);
+            let expected = llrint_reference(x);
+            assert_eq!(actual, expected, "llrint({x})");
+        }
+
+        #[test]
+        fn ptest_lround(x in -1e6..1e6_f64) {
+            let actual = fastlibm::lround(x);
+            let expected = lround_reference(x);
+            assert_eq!(actual, expected, "lround({x})");
+        }
+
+        #[test]
+        fn ptest_llround(x in -1e6..1e6_f64) {
+            let actual = fastlibm::llround(x);
+            let expected = llround_reference(x);
+            assert_eq!(actual, expected, "llround({x})");
+        }
+
+        #[test]
+        fn ptest_fma(x in -1e3..1e3_f64, y in -1e3..1e3_f64, z in -1e3..1e3_f64) {
+            let actual = fastlibm::fma(x, y, z);
+            let expected = fma_reference(x, y, z);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("fma({x},{y},{z})"));
+        }
+
+        #[test]
+        fn ptest_frexp(x in -1e300..1e300_f64) {
+            let (m_a, e_a) = fastlibm::frexp(x);
+            let (m_e, e_e) = frexp_reference(x);
+            assert_ulp_eq(m_a, m_e, PROPTEST_ULP_TOL, &format!("frexp({x}) mantissa"));
+            assert_eq!(e_a, e_e, "frexp({x}) exponent");
+        }
+
+        #[test]
+        fn ptest_scalbn(x in -1e300..1e300_f64, n in -1000i32..1000i32) {
+            let actual = fastlibm::scalbn(x, n);
+            let expected = scalbn_reference(x, n);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("scalbn({x},{n})"));
+        }
+
+        #[test]
+        fn ptest_scalbln(x in -1e300..1e300_f64, n in -1000i64..1000i64) {
+            let actual = fastlibm::scalbln(x, n);
+            let expected = scalbln_reference(x, n);
+            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("scalbln({x},{n})"));
+        }
+
+        #[test]
+        fn ptest_remquo(x in -1e6..1e6_f64, y in -1e6..1e6_f64) {
+            prop_assume!(y != 0.0);
+            let (actual_r, actual_q) = fastlibm::remquo(x, y);
+            let (expected_r, expected_q) = remquo_reference(x, y);
+            assert_ulp_eq(actual_r, expected_r, PROPTEST_ULP_TOL, &format!("remquo({x},{y})"));
+            assert_eq!(actual_q, expected_q, "remquo({x},{y}) quotient");
         }
 
         #[test]

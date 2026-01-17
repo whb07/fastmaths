@@ -158,6 +158,86 @@ harness = false
 name = "bench_cbrt"
 harness = false
 
+[[bench]]
+name = "bench_floor"
+harness = false
+
+[[bench]]
+name = "bench_ceil"
+harness = false
+
+[[bench]]
+name = "bench_trunc"
+harness = false
+
+[[bench]]
+name = "bench_round"
+harness = false
+
+[[bench]]
+name = "bench_rint"
+harness = false
+
+[[bench]]
+name = "bench_nearbyint"
+harness = false
+
+[[bench]]
+name = "bench_lrint"
+harness = false
+
+[[bench]]
+name = "bench_llrint"
+harness = false
+
+[[bench]]
+name = "bench_lround"
+harness = false
+
+[[bench]]
+name = "bench_llround"
+harness = false
+
+[[bench]]
+name = "bench_copysign"
+harness = false
+
+[[bench]]
+name = "bench_fabs"
+harness = false
+
+[[bench]]
+name = "bench_fma"
+harness = false
+
+[[bench]]
+name = "bench_frexp"
+harness = false
+
+[[bench]]
+name = "bench_ldexp"
+harness = false
+
+[[bench]]
+name = "bench_scalbn"
+harness = false
+
+[[bench]]
+name = "bench_scalbln"
+harness = false
+
+[[bench]]
+name = "bench_remquo"
+harness = false
+
+[[bench]]
+name = "bench_lgamma"
+harness = false
+
+[[bench]]
+name = "bench_tgamma"
+harness = false
+
 [profile.bench]
 codegen-units = 1
 lto = true

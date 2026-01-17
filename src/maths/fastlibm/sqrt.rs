@@ -1,4 +1,4 @@
-use super::scalbn;
+use super::scalbn_internal;
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "sse2")]
@@ -48,7 +48,7 @@ fn sqrt_fallback(x: f64) -> f64 {
     let mut ux = ax.to_bits();
     if ((ux >> 52) & 0x7ff) == 0 {
         // Normalize subnormals.
-        ax = scalbn(ax, 54);
+        ax = scalbn_internal(ax, 54);
         scale = -27;
         ux = ax.to_bits();
     }
@@ -62,7 +62,7 @@ fn sqrt_fallback(x: f64) -> f64 {
     y = 0.5 * (y + ax / y);
 
     if scale != 0 {
-        y = scalbn(y, scale);
+        y = scalbn_internal(y, scale);
     }
 
     let y2 = y * y;

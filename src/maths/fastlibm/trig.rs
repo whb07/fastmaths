@@ -6,7 +6,7 @@
 )]
 
 use super::sincos_tab::SINCOS_TAB;
-use super::{floor_f64, hi_word, lo_word, scalbn, with_hi_lo};
+use super::{floor_f64, hi_word, lo_word, scalbn_internal, with_hi_lo};
 
 // ========= fdlibm/glibc-grade sin/cos =========
 //
@@ -196,7 +196,7 @@ const TOVERP: [f64; 75] = [
 ];
 
 #[inline(always)]
-fn kernel_sin(x: f64, y: f64, iy: i32) -> f64 {
+pub(crate) fn kernel_sin(x: f64, y: f64, iy: i32) -> f64 {
     let ix = hi_word(x) & 0x7fff_ffff;
     if ix < 0x3e40_0000 {
         if (x as i32) == 0 {
@@ -214,7 +214,7 @@ fn kernel_sin(x: f64, y: f64, iy: i32) -> f64 {
 }
 
 #[inline(always)]
-fn kernel_cos(x: f64, y: f64) -> f64 {
+pub(crate) fn kernel_cos(x: f64, y: f64) -> f64 {
     let ix = hi_word(x) & 0x7fff_ffff;
     if ix < 0x3e40_0000 {
         if (x as i32) == 0 {
@@ -311,7 +311,7 @@ fn kernel_rem_pio2(x: &[f64; 3], y: &mut [f64; 2], e0: i32, nx: i32, prec: i32) 
         }
 
         // compute n
-        z = scalbn(z, q0);
+        z = scalbn_internal(z, q0);
         z -= 8.0 * floor_f64(z * 0.125);
         let mut n = z as i32;
         z -= n as f64;
@@ -352,7 +352,7 @@ fn kernel_rem_pio2(x: &[f64; 3], y: &mut [f64; 2], e0: i32, nx: i32, prec: i32) 
             if ih == 2 {
                 z = KR_ONE - z;
                 if carry != 0 {
-                    z -= scalbn(KR_ONE, q0);
+                    z -= scalbn_internal(KR_ONE, q0);
                 }
             }
         }
@@ -392,7 +392,7 @@ fn kernel_rem_pio2(x: &[f64; 3], y: &mut [f64; 2], e0: i32, nx: i32, prec: i32) 
                 q0 -= 24;
             }
         } else {
-            z = scalbn(z, -q0);
+            z = scalbn_internal(z, -q0);
             if z >= KR_TWO24 {
                 let fw = ((KR_TWON24 * z) as i32) as f64;
                 iq[jz as usize] = (z - KR_TWO24 * fw) as i32;
@@ -405,7 +405,7 @@ fn kernel_rem_pio2(x: &[f64; 3], y: &mut [f64; 2], e0: i32, nx: i32, prec: i32) 
         }
 
         // convert iq[] chunks to q[]
-        let mut fw = scalbn(KR_ONE, q0);
+        let mut fw = scalbn_internal(KR_ONE, q0);
         for i in (0..=(jz as usize)).rev() {
             q[i] = fw * (iq[i] as f64);
             fw *= KR_TWON24;
@@ -482,7 +482,7 @@ fn rem_pio2(x: f64) -> (i32, f64, f64) {
     if ix <= 0x4139_21fbu32 {
         let t = x.abs();
         #[cfg(target_feature = "fma")]
-        let n = (super::fma(t, INVPIO2, HALF)) as i32;
+        let n = (super::fma_internal(t, INVPIO2, HALF)) as i32;
         #[cfg(not(target_feature = "fma"))]
         let n = (t * INVPIO2 + HALF) as i32;
         let fn_ = n as f64;

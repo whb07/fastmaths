@@ -40,6 +40,19 @@ pub fn gen_pairs(count: usize, min: f64, max: f64, seed: u64) -> Vec<(f64, f64)>
     values
 }
 
+pub fn gen_triples(count: usize, min: f64, max: f64, seed: u64) -> Vec<(f64, f64, f64)> {
+    let mut state = seed;
+    let span = max - min;
+    let mut values = Vec::with_capacity(count);
+    for _ in 0..count {
+        let x = min + uniform_f64(&mut state) * span;
+        let y = min + uniform_f64(&mut state) * span;
+        let z = min + uniform_f64(&mut state) * span;
+        values.push((x, y, z));
+    }
+    values
+}
+
 pub fn bench_inputs<F, G>(
     group: &mut BenchmarkGroup<'_, criterion::measurement::WallTime>,
     inputs: &[f64],
@@ -69,6 +82,35 @@ pub fn bench_inputs<F, G>(
     });
 }
 
+pub fn bench_inputs_i64<F, G>(
+    group: &mut BenchmarkGroup<'_, criterion::measurement::WallTime>,
+    inputs: &[f64],
+    fast: F,
+    glibc: G,
+) where
+    F: Fn(f64) -> i64 + Copy,
+    G: Fn(f64) -> i64 + Copy,
+{
+    group.bench_function("fastlibm", |b| {
+        b.iter(|| {
+            let mut acc: i64 = 0;
+            for &x in inputs {
+                acc = acc.wrapping_add(fast(black_box(x)));
+            }
+            black_box(acc)
+        })
+    });
+    group.bench_function("glibc", |b| {
+        b.iter(|| {
+            let mut acc: i64 = 0;
+            for &x in inputs {
+                acc = acc.wrapping_add(glibc(black_box(x)));
+            }
+            black_box(acc)
+        })
+    });
+}
+
 pub fn bench_inputs2<F, G>(
     group: &mut BenchmarkGroup<'_, criterion::measurement::WallTime>,
     inputs: &[(f64, f64)],
@@ -92,6 +134,93 @@ pub fn bench_inputs2<F, G>(
             let mut acc = 0.0;
             for &(x, y) in inputs {
                 acc += glibc(black_box(x), black_box(y));
+            }
+            black_box(acc)
+        })
+    });
+}
+
+pub fn bench_inputs3<F, G>(
+    group: &mut BenchmarkGroup<'_, criterion::measurement::WallTime>,
+    inputs: &[(f64, f64, f64)],
+    fast: F,
+    glibc: G,
+) where
+    F: Fn(f64, f64, f64) -> f64 + Copy,
+    G: Fn(f64, f64, f64) -> f64 + Copy,
+{
+    group.bench_function("fastlibm", |b| {
+        b.iter(|| {
+            let mut acc = 0.0;
+            for &(x, y, z) in inputs {
+                acc += fast(black_box(x), black_box(y), black_box(z));
+            }
+            black_box(acc)
+        })
+    });
+    group.bench_function("glibc", |b| {
+        b.iter(|| {
+            let mut acc = 0.0;
+            for &(x, y, z) in inputs {
+                acc += glibc(black_box(x), black_box(y), black_box(z));
+            }
+            black_box(acc)
+        })
+    });
+}
+
+pub fn bench_inputs_i32_arg<F, G>(
+    group: &mut BenchmarkGroup<'_, criterion::measurement::WallTime>,
+    inputs: &[(f64, i32)],
+    fast: F,
+    glibc: G,
+) where
+    F: Fn(f64, i32) -> f64 + Copy,
+    G: Fn(f64, i32) -> f64 + Copy,
+{
+    group.bench_function("fastlibm", |b| {
+        b.iter(|| {
+            let mut acc = 0.0;
+            for &(x, n) in inputs {
+                acc += fast(black_box(x), black_box(n));
+            }
+            black_box(acc)
+        })
+    });
+    group.bench_function("glibc", |b| {
+        b.iter(|| {
+            let mut acc = 0.0;
+            for &(x, n) in inputs {
+                acc += glibc(black_box(x), black_box(n));
+            }
+            black_box(acc)
+        })
+    });
+}
+
+pub fn bench_inputs_i64_arg<F, G>(
+    group: &mut BenchmarkGroup<'_, criterion::measurement::WallTime>,
+    inputs: &[(f64, i64)],
+    fast: F,
+    glibc: G,
+) where
+    F: Fn(f64, i64) -> f64 + Copy,
+    G: Fn(f64, i64) -> f64 + Copy,
+{
+    group.bench_function("fastlibm", |b| {
+        b.iter(|| {
+            let mut acc = 0.0;
+            for &(x, n) in inputs {
+                acc += fast(black_box(x), black_box(n));
+            }
+            black_box(acc)
+        })
+    });
+    group.bench_function("glibc", |b| {
+        b.iter(|| {
+            let mut acc = 0.0;
+            for &(x, n) in inputs {
+                acc += glibc(black_box(x), black_box(n));
             }
             black_box(acc)
         })
@@ -142,6 +271,26 @@ struct LibmFns {
     pow: unsafe extern "C" fn(f64, f64) -> f64,
     sqrt: unsafe extern "C" fn(f64) -> f64,
     cbrt: unsafe extern "C" fn(f64) -> f64,
+    floor: unsafe extern "C" fn(f64) -> f64,
+    ceil: unsafe extern "C" fn(f64) -> f64,
+    trunc: unsafe extern "C" fn(f64) -> f64,
+    round: unsafe extern "C" fn(f64) -> f64,
+    rint: unsafe extern "C" fn(f64) -> f64,
+    nearbyint: unsafe extern "C" fn(f64) -> f64,
+    lrint: unsafe extern "C" fn(f64) -> i64,
+    llrint: unsafe extern "C" fn(f64) -> i64,
+    lround: unsafe extern "C" fn(f64) -> i64,
+    llround: unsafe extern "C" fn(f64) -> i64,
+    copysign: unsafe extern "C" fn(f64, f64) -> f64,
+    fabs: unsafe extern "C" fn(f64) -> f64,
+    frexp: unsafe extern "C" fn(f64, *mut i32) -> f64,
+    ldexp: unsafe extern "C" fn(f64, i32) -> f64,
+    scalbn: unsafe extern "C" fn(f64, i32) -> f64,
+    scalbln: unsafe extern "C" fn(f64, i64) -> f64,
+    fma: unsafe extern "C" fn(f64, f64, f64) -> f64,
+    remquo: unsafe extern "C" fn(f64, f64, *mut i32) -> f64,
+    lgamma: unsafe extern "C" fn(f64) -> f64,
+    tgamma: unsafe extern "C" fn(f64) -> f64,
 }
 
 static LIBM_FNS: OnceLock<LibmFns> = OnceLock::new();
@@ -237,6 +386,46 @@ fn load_libm() -> LibmFns {
             lib.get(b"sqrt").expect("load sqrt");
         let cbrt: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
             lib.get(b"cbrt").expect("load cbrt");
+        let floor: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"floor").expect("load floor");
+        let ceil: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"ceil").expect("load ceil");
+        let trunc: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"trunc").expect("load trunc");
+        let round: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"round").expect("load round");
+        let rint: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"rint").expect("load rint");
+        let nearbyint: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"nearbyint").expect("load nearbyint");
+        let lrint: libloading::Symbol<unsafe extern "C" fn(f64) -> i64> =
+            lib.get(b"lrint").expect("load lrint");
+        let llrint: libloading::Symbol<unsafe extern "C" fn(f64) -> i64> =
+            lib.get(b"llrint").expect("load llrint");
+        let lround: libloading::Symbol<unsafe extern "C" fn(f64) -> i64> =
+            lib.get(b"lround").expect("load lround");
+        let llround: libloading::Symbol<unsafe extern "C" fn(f64) -> i64> =
+            lib.get(b"llround").expect("load llround");
+        let copysign: libloading::Symbol<unsafe extern "C" fn(f64, f64) -> f64> =
+            lib.get(b"copysign").expect("load copysign");
+        let fabs: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"fabs").expect("load fabs");
+        let frexp: libloading::Symbol<unsafe extern "C" fn(f64, *mut i32) -> f64> =
+            lib.get(b"frexp").expect("load frexp");
+        let ldexp: libloading::Symbol<unsafe extern "C" fn(f64, i32) -> f64> =
+            lib.get(b"ldexp").expect("load ldexp");
+        let scalbn: libloading::Symbol<unsafe extern "C" fn(f64, i32) -> f64> =
+            lib.get(b"scalbn").expect("load scalbn");
+        let scalbln: libloading::Symbol<unsafe extern "C" fn(f64, i64) -> f64> =
+            lib.get(b"scalbln").expect("load scalbln");
+        let fma: libloading::Symbol<unsafe extern "C" fn(f64, f64, f64) -> f64> =
+            lib.get(b"fma").expect("load fma");
+        let remquo: libloading::Symbol<unsafe extern "C" fn(f64, f64, *mut i32) -> f64> =
+            lib.get(b"remquo").expect("load remquo");
+        let lgamma: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"lgamma").expect("load lgamma");
+        let tgamma: libloading::Symbol<unsafe extern "C" fn(f64) -> f64> =
+            lib.get(b"tgamma").expect("load tgamma");
         eprintln!("Using libm from {path}");
         LibmFns {
             exp: *exp,
@@ -275,6 +464,26 @@ fn load_libm() -> LibmFns {
             pow: *pow,
             sqrt: *sqrt,
             cbrt: *cbrt,
+            floor: *floor,
+            ceil: *ceil,
+            trunc: *trunc,
+            round: *round,
+            rint: *rint,
+            nearbyint: *nearbyint,
+            lrint: *lrint,
+            llrint: *llrint,
+            lround: *lround,
+            llround: *llround,
+            copysign: *copysign,
+            fabs: *fabs,
+            frexp: *frexp,
+            ldexp: *ldexp,
+            scalbn: *scalbn,
+            scalbln: *scalbln,
+            fma: *fma,
+            remquo: *remquo,
+            lgamma: *lgamma,
+            tgamma: *tgamma,
         }
     }
 }
@@ -463,4 +672,108 @@ pub fn glibc_sqrt(x: f64) -> f64 {
 #[inline(never)]
 pub fn glibc_cbrt(x: f64) -> f64 {
     unsafe { (libm().cbrt)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_floor(x: f64) -> f64 {
+    unsafe { (libm().floor)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_ceil(x: f64) -> f64 {
+    unsafe { (libm().ceil)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_trunc(x: f64) -> f64 {
+    unsafe { (libm().trunc)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_round(x: f64) -> f64 {
+    unsafe { (libm().round)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_rint(x: f64) -> f64 {
+    unsafe { (libm().rint)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_nearbyint(x: f64) -> f64 {
+    unsafe { (libm().nearbyint)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_lrint(x: f64) -> i64 {
+    unsafe { (libm().lrint)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_llrint(x: f64) -> i64 {
+    unsafe { (libm().llrint)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_lround(x: f64) -> i64 {
+    unsafe { (libm().lround)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_llround(x: f64) -> i64 {
+    unsafe { (libm().llround)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_copysign(x: f64, y: f64) -> f64 {
+    unsafe { (libm().copysign)(x, y) }
+}
+
+#[inline(never)]
+pub fn glibc_fabs(x: f64) -> f64 {
+    unsafe { (libm().fabs)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_frexp(x: f64) -> (f64, i32) {
+    let mut exp = 0;
+    let mant = unsafe { (libm().frexp)(x, &mut exp as *mut i32) };
+    (mant, exp)
+}
+
+#[inline(never)]
+pub fn glibc_ldexp(x: f64, n: i32) -> f64 {
+    unsafe { (libm().ldexp)(x, n) }
+}
+
+#[inline(never)]
+pub fn glibc_scalbn(x: f64, n: i32) -> f64 {
+    unsafe { (libm().scalbn)(x, n) }
+}
+
+#[inline(never)]
+pub fn glibc_scalbln(x: f64, n: i64) -> f64 {
+    unsafe { (libm().scalbln)(x, n) }
+}
+
+#[inline(never)]
+pub fn glibc_fma(x: f64, y: f64, z: f64) -> f64 {
+    unsafe { (libm().fma)(x, y, z) }
+}
+
+#[inline(never)]
+pub fn glibc_remquo(x: f64, y: f64) -> (f64, i32) {
+    let mut q = 0;
+    let r = unsafe { (libm().remquo)(x, y, &mut q as *mut i32) };
+    (r, q)
+}
+
+#[inline(never)]
+pub fn glibc_lgamma(x: f64) -> f64 {
+    unsafe { (libm().lgamma)(x) }
+}
+
+#[inline(never)]
+pub fn glibc_tgamma(x: f64) -> f64 {
+    unsafe { (libm().tgamma)(x) }
 }

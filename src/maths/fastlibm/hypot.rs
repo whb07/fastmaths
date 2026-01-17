@@ -1,4 +1,4 @@
-use super::{scalbn, sqrt};
+use super::{scalbn_internal, sqrt};
 
 #[inline]
 pub fn hypot(x: f64, y: f64) -> f64 {
@@ -21,14 +21,14 @@ pub fn hypot(x: f64, y: f64) -> f64 {
 
     let exp = ((ax.to_bits() >> 52) & 0x7ff) as i32 - 1023;
     if exp > 600 {
-        let sx = scalbn(ax, -600);
-        let sy = scalbn(ay, -600);
-        return scalbn(sqrt(sx * sx + sy * sy), 600);
+        let sx = scalbn_internal(ax, -600);
+        let sy = scalbn_internal(ay, -600);
+        return scalbn_internal(sqrt(sx * sx + sy * sy), 600);
     }
     if exp < -500 {
-        let sx = scalbn(ax, 600);
-        let sy = scalbn(ay, 600);
-        return scalbn(sqrt(sx * sx + sy * sy), -600);
+        let sx = scalbn_internal(ax, 600);
+        let sy = scalbn_internal(ay, 600);
+        return scalbn_internal(sqrt(sx * sx + sy * sy), -600);
     }
 
     sqrt(ax * ax + ay * ay)

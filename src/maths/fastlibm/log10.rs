@@ -1,4 +1,4 @@
-use super::{fma, ln, scalbn};
+use super::{fma_internal, ln, scalbn_internal};
 use core::f64::consts::{LOG10_2, LOG10_E};
 
 const NEAR1_MIN: f64 = 0.75;
@@ -7,7 +7,7 @@ const NEAR1_MAX: f64 = 1.5;
 #[inline]
 fn mul_dd(a: f64, b: f64) -> f64 {
     let p = a * b;
-    let e = fma(a, b, -p);
+    let e = fma_internal(a, b, -p);
     p + e
 }
 
@@ -34,7 +34,7 @@ pub fn log10(x: f64) -> f64 {
     let mut exp = ((ux >> 52) & 0x7ff) as i32;
     let mut k = exp - 1023;
     if exp == 0 {
-        let y = scalbn(x, 54);
+        let y = scalbn_internal(x, 54);
         ux = y.to_bits();
         exp = ((ux >> 52) & 0x7ff) as i32;
         k = exp - 1023 - 54;
@@ -42,5 +42,5 @@ pub fn log10(x: f64) -> f64 {
 
     let mant = f64::from_bits((ux & 0x000f_ffff_ffff_ffff) | 0x3ff0_0000_0000_0000);
     let log10_m = mul_dd(ln(mant), LOG10_E);
-    fma(k as f64, LOG10_2, log10_m)
+    fma_internal(k as f64, LOG10_2, log10_m)
 }

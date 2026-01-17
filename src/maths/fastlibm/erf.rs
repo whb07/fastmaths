@@ -64,7 +64,7 @@ fn fabs(x: f64) -> f64 {
 
 #[inline(always)]
 fn fma(x: f64, y: f64, z: f64) -> f64 {
-    super::fma(x, y, z)
+    super::fma_internal(x, y, z)
 }
 
 #[inline(always)]

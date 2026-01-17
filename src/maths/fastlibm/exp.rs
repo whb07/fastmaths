@@ -1,4 +1,4 @@
-use super::{f64_from_bits, f64_to_bits, fma, is_inf_bits, is_nan_bits};
+use super::{f64_from_bits, f64_to_bits, fma_internal, is_inf_bits, is_nan_bits};
 
 // ========= glibc-derived exp table (N=128) =========
 
@@ -373,7 +373,7 @@ fn exp_generic(x: f64) -> f64 {
     if (k_adj as u32) >= (2047 * N as u32) || (k_adj as u32) < (N as u32) {
         return specialcase(tmp, sbits, k as i64);
     }
-    fma(scale, tmp, scale)
+    fma_internal(scale, tmp, scale)
 }
 
 #[inline(always)]
@@ -416,7 +416,7 @@ pub(crate) fn exp_with_tail_generic(x: f64, xtail: f64) -> f64 {
     if (k_adj as u32) >= (2047 * N as u32) || (k_adj as u32) < (N as u32) {
         return specialcase(tmp, sbits, k as i64);
     }
-    fma(scale, tmp, scale)
+    fma_internal(scale, tmp, scale)
 }
 
 #[cfg(target_arch = "x86_64")]

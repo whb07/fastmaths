@@ -11,6 +11,8 @@ mod atan;
 mod atan2;
 mod atanh;
 mod cbrt;
+mod classify;
+mod copysign;
 mod cos;
 mod cosh;
 mod erf;
@@ -19,9 +21,11 @@ mod exp10;
 mod exp2;
 mod expm1;
 mod fdim;
+mod fma;
 mod fmax;
 mod fmin;
 mod fmod;
+mod gamma;
 mod hypot;
 mod ilogb;
 mod log;
@@ -33,6 +37,9 @@ mod modf;
 mod nextafter;
 mod pow;
 mod remainder;
+mod remquo;
+mod rounding;
+mod scaling;
 mod sin;
 mod sincos_tab;
 mod sinh;
@@ -50,6 +57,11 @@ pub use atan::atan;
 pub use atan2::atan2;
 pub use atanh::atanh;
 pub use cbrt::cbrt;
+pub use classify::{
+    FP_INFINITE, FP_NAN, FP_NORMAL, FP_SUBNORMAL, FP_ZERO, fpclassify, isfinite, isinf, isnan,
+    signbit,
+};
+pub use copysign::{copysign, fabs};
 pub use cos::cos;
 pub use cosh::cosh;
 pub use erf::{erf, erfc};
@@ -58,9 +70,11 @@ pub use exp2::exp2;
 pub use exp10::exp10;
 pub use expm1::expm1;
 pub use fdim::fdim;
+pub use fma::fma;
 pub use fmax::fmax;
 pub use fmin::fmin;
 pub use fmod::fmod;
+pub use gamma::{lgamma, tgamma};
 pub use hypot::hypot;
 pub use ilogb::ilogb;
 pub use log::ln;
@@ -72,6 +86,9 @@ pub use modf::modf;
 pub use nextafter::nextafter;
 pub use pow::pow;
 pub use remainder::remainder;
+pub use remquo::remquo;
+pub use rounding::{ceil, floor, llrint, llround, lrint, lround, nearbyint, rint, round, trunc};
+pub use scaling::{frexp, ldexp, scalbln, scalbn_public as scalbn};
 pub use sin::sin;
 pub use sinh::sinh;
 pub use sqrt::sqrt;
@@ -92,27 +109,58 @@ fn f64_to_bits(x: f64) -> u64 {
     x.to_bits()
 }
 
-#[inline(always)]
-#[cfg(all(target_feature = "fma", target_arch = "x86_64"))]
-fn fma(a: f64, b: f64, c: f64) -> f64 {
-    use core::arch::x86_64::{_mm_cvtsd_f64, _mm_fmadd_sd, _mm_set_sd};
-    unsafe { _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(a), _mm_set_sd(b), _mm_set_sd(c))) }
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+#[target_feature(enable = "fma")]
+unsafe fn fma_hw(a: f64, b: f64, c: f64) -> f64 {
+    #[cfg(target_arch = "x86_64")]
+    {
+        use core::arch::x86_64::{_mm_cvtsd_f64, _mm_fmadd_sd, _mm_set_sd};
+        _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(a), _mm_set_sd(b), _mm_set_sd(c)))
+    }
+    #[cfg(target_arch = "x86")]
+    {
+        use core::arch::x86::{_mm_cvtsd_f64, _mm_fmadd_sd, _mm_set_sd};
+        _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(a), _mm_set_sd(b), _mm_set_sd(c)))
+    }
 }
 
 #[inline(always)]
-#[cfg(all(target_feature = "fma", target_arch = "x86"))]
-fn fma(a: f64, b: f64, c: f64) -> f64 {
-    use core::arch::x86::{_mm_cvtsd_f64, _mm_fmadd_sd, _mm_set_sd};
-    unsafe { _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(a), _mm_set_sd(b), _mm_set_sd(c))) }
+fn fma_soft(a: f64, b: f64, c: f64) -> f64 {
+    if !a.is_finite() || !b.is_finite() || !c.is_finite() {
+        return a * b + c;
+    }
+    let p = a * b;
+    if !p.is_finite() {
+        return p + c;
+    }
+    const SPLIT: f64 = 134_217_729.0; // 2^27 + 1
+    let max = f64::MAX / SPLIT;
+    if a.abs() > max || b.abs() > max {
+        return p + c;
+    }
+    let a_split = a * SPLIT;
+    let a_hi = a_split - (a_split - a);
+    let a_lo = a - a_hi;
+    let b_split = b * SPLIT;
+    let b_hi = b_split - (b_split - b);
+    let b_lo = b - b_hi;
+    let err = ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi) + a_lo * b_lo;
+    let s = p + c;
+    let err2 = (p - s) + c;
+    let t = err + err2;
+    s + t
 }
 
 #[inline(always)]
-#[cfg(not(any(
-    all(target_feature = "fma", target_arch = "x86_64"),
-    all(target_feature = "fma", target_arch = "x86")
-)))]
-fn fma(a: f64, b: f64, c: f64) -> f64 {
-    a * b + c
+fn fma_internal(a: f64, b: f64, c: f64) -> f64 {
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    {
+        if cpu_has_fma() {
+            // Safety: guarded by runtime feature detection.
+            return unsafe { fma_hw(a, b, c) };
+        }
+    }
+    fma_soft(a, b, c)
 }
 
 // Runtime CPU feature detection (no-std friendly).
@@ -167,11 +215,11 @@ fn is_inf_bits(u: u64) -> bool {
     (u & 0x7fff_ffff_ffff_ffffu64) == 0x7ff0_0000_0000_0000u64
 }
 
-/// scalbn(x, n): multiply by 2^n without calling any libm.
+/// scalbn_internal(x, n): multiply by 2^n without calling any libm.
 #[inline(always)]
-fn scalbn(mut x: f64, n: i32) -> f64 {
+pub(crate) fn scalbn_internal(mut x: f64, n: i32) -> f64 {
     let ux = f64_to_bits(x);
-    let e = get_exp_bits(ux);
+    let e = get_exp_bits(ux) as i64;
     if e == 0 {
         if x == 0.0 {
             return x;
@@ -179,20 +227,29 @@ fn scalbn(mut x: f64, n: i32) -> f64 {
         // normalize
         x *= f64_from_bits(0x4350_0000_0000_0000u64); // 2^54
         let uy = f64_to_bits(x);
-        let ey = get_exp_bits(uy) - 54;
-        let ne = ey + n;
+        let ey = (get_exp_bits(uy) - 54) as i64;
+        let ne = ey + n as i64;
+        if ne >= 0x7ff {
+            return if x.is_sign_negative() {
+                f64::NEG_INFINITY
+            } else {
+                f64::INFINITY
+            };
+        }
         if ne <= 0 {
             // underflow/subnormal
-            return x
-                * f64_from_bits(((ne + 1023 + 54) as u64) << 52)
-                * f64_from_bits(0x3c90_0000_0000_0000u64);
+            let exp = ne + 1023 + 54;
+            if exp <= 0 {
+                return 0.0 * x;
+            }
+            return x * f64_from_bits((exp as u64) << 52) * f64_from_bits(0x3c90_0000_0000_0000u64);
         }
         return f64_from_bits((uy & 0x800f_ffff_ffff_ffffu64) | ((ne as u64) << 52));
     }
     if e == 0x7ff {
         return x;
     }
-    let ne = e + n;
+    let ne = e + n as i64;
     if ne <= 0 {
         if ne <= -52 {
             return 0.0 * x;
@@ -214,7 +271,7 @@ fn scalbn(mut x: f64, n: i32) -> f64 {
 
 /// floor(x) implemented via bit manipulation (no libm).
 #[inline(always)]
-fn floor_f64(x: f64) -> f64 {
+pub(crate) fn floor_f64(x: f64) -> f64 {
     let u = f64_to_bits(x);
     let sx = u >> 63;
     let e = ((u >> 52) & 0x7ff) as i32;
@@ -273,13 +330,13 @@ mod tests {
             (1e-300, -10),
         ];
         for &(x, n) in &values {
-            let actual = scalbn(x, n);
+            let actual = scalbn_internal(x, n);
             let expected = x * 2.0f64.powi(n);
             let diff = (actual - expected).abs();
             if expected != 0.0 {
                 assert!(
                     diff / expected.abs() < 1e-15,
-                    "scalbn({x}, {n}) failed: got {actual}, expected {expected}"
+                    "scalbn_internal({x}, {n}) failed: got {actual}, expected {expected}"
                 );
             } else {
                 assert_eq!(actual, 0.0);

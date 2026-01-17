@@ -614,7 +614,7 @@ pub fn ln(x: f64) -> f64 {
     let logc = unsafe { f64_from_bits(*LOG_LOGC_U64.get_unchecked(i)) };
     let z = f64_from_bits(iz);
     #[cfg(target_feature = "fma")]
-    let r = super::fma(z, invc, -1.0);
+    let r = super::fma_internal(z, invc, -1.0);
 
     #[cfg(not(target_feature = "fma"))]
     let r = (z
@@ -636,10 +636,10 @@ pub fn ln(x: f64) -> f64 {
 fn eval_poly(r: f64, r2: f64) -> f64 {
     #[cfg(target_feature = "fma")]
     {
-        let p = super::fma(LOG_A4, r, LOG_A3);
-        let p = super::fma(p, r, LOG_A2);
-        let p = super::fma(p, r, LOG_A1);
-        let p = super::fma(p, r, LOG_A0);
+        let p = super::fma_internal(LOG_A4, r, LOG_A3);
+        let p = super::fma_internal(p, r, LOG_A2);
+        let p = super::fma_internal(p, r, LOG_A1);
+        let p = super::fma_internal(p, r, LOG_A0);
         r2 * p
     }
     #[cfg(not(target_feature = "fma"))]

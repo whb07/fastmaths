@@ -1,4 +1,4 @@
-use super::scalbn;
+use super::scalbn_internal;
 
 const CBRT2: f64 = 1.259_921_049_894_873_164_8; // 2^(1/3)
 const SQR_CBRT2: f64 = 1.587_401_051_968_199_474_8; // 2^(2/3)
@@ -41,7 +41,7 @@ pub fn cbrt(x: f64) -> f64 {
     let idx = (2 + (xe % 3)) as usize;
     let ym = u * (t2 + 2.0 * xm) / (2.0 * t2 + xm) * FACTOR[idx];
 
-    let mut y = scalbn(ym, xe / 3);
+    let mut y = scalbn_internal(ym, xe / 3);
     if x.is_sign_negative() {
         y = -y;
     }
