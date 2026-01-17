@@ -373,7 +373,6 @@ const LOG_B: [LogB; 32] = [
     },
 ];
 
-// idx 0 line 14 src db
 const LGAMMA_DB: [[f64; 3]; 19] = [
     [
         f64::from_bits(0xc021b649eb4316fb),
@@ -472,7 +471,6 @@ const LGAMMA_DB: [[f64; 3]; 19] = [
     ],
 ];
 
-// idx 1 line 52 src c0
 const LGAMMA_C0: [[f64; 2]; 34] = [
     [
         f64::from_bits(0xbfe2788cfc6fb619),
@@ -612,7 +610,6 @@ const LGAMMA_C0: [[f64; 2]; 34] = [
     ],
 ];
 
-// idx 2 line 99 src b
 const LGAMMA_B: [[f64; 2]; 30] = [
     [
         f64::from_bits(0xbfbeeb95b094c191),
@@ -736,7 +733,6 @@ const LGAMMA_B: [[f64; 2]; 30] = [
     ],
 ];
 
-// idx 37 line 979 src offs
 const LGAMMA_OFFS: [f64; 19] = [
     f64::from_bits(0x3fe146cd80000000),
     f64::from_bits(0x3fe3fe8980000000),
@@ -759,7 +755,6 @@ const LGAMMA_OFFS: [f64; 19] = [
     f64::from_bits(0x401e74cc80000000),
 ];
 
-// idx 38 line 985 src cl
 const LGAMMA_CL: [[f64; 8]; 19] = [
     [
         f64::from_bits(0xc0118ad63ca097e9),
@@ -953,7 +948,6 @@ const LGAMMA_CL: [[f64; 8]; 19] = [
     ],
 ];
 
-// idx 39 line 1061 src ch
 const LGAMMA_CH: [[[f64; 2]; 5]; 19] = [
     [
         [
@@ -1375,7 +1369,6 @@ const LGAMMA_CH: [[[f64; 2]; 5]; 19] = [
     ],
 ];
 
-// idx 40 line 1172 src c0
 const LGAMMA_SMALL_C0: [[f64; 2]; 4] = [
     [
         f64::from_bits(0xbfe2788cfc6fb619),
@@ -1395,7 +1388,6 @@ const LGAMMA_SMALL_C0: [[f64; 2]; 4] = [
     ],
 ];
 
-// idx 41 line 1177 src q
 const LGAMMA_SMALL_Q: [f64; 8] = [
     f64::from_bits(0xbfca8b9c17aa5d3d),
     f64::from_bits(0x3fc5b40cb100b9bf),
@@ -1407,7 +1399,6 @@ const LGAMMA_SMALL_Q: [f64; 8] = [
     f64::from_bits(0x3fb566b51c990008),
 ];
 
-// idx 42 line 1235 src c
 const LGAMMA_ASYM_C: [[f64; 2]; 2] = [
     [
         f64::from_bits(0x3fdacfe390c97d6a),
@@ -1419,7 +1410,6 @@ const LGAMMA_ASYM_C: [[f64; 2]; 2] = [
     ],
 ];
 
-// idx 43 line 1240 src q
 const LGAMMA_ASYM_Q: [f64; 5] = [
     f64::from_bits(0xbf66c16c1697de08),
     f64::from_bits(0x3f4a019f47b230fd),
@@ -1428,7 +1418,6 @@ const LGAMMA_ASYM_Q: [f64; 5] = [
     f64::from_bits(0xbf5a7fd66a05ccfc),
 ];
 
-// idx 44 line 1314 src r1
 const LOG_R1: [f64; 33] = [
     f64::from_bits(0x3ff0000000000000),
     f64::from_bits(0x3fef508000000000),
@@ -1465,7 +1454,6 @@ const LOG_R1: [f64; 33] = [
     f64::from_bits(0x3fe0000000000000),
 ];
 
-// idx 45 line 1332 src r2
 const LOG_R2: [f64; 33] = [
     f64::from_bits(0x3ff0000000000000),
     f64::from_bits(0x3feffa7000000000),
@@ -1502,7 +1490,6 @@ const LOG_R2: [f64; 33] = [
     f64::from_bits(0x3fef507000000000),
 ];
 
-// idx 46 line 1343 src l1
 const LOG_L1: [[f64; 2]; 33] = [
     [
         f64::from_bits(0x0000000000000000),
@@ -1638,7 +1625,6 @@ const LOG_L1: [[f64; 2]; 33] = [
     ],
 ];
 
-// idx 47 line 1394 src l2
 const LOG_L2: [[f64; 2]; 32] = [
     [
         f64::from_bits(0x0000000000000000),
@@ -1770,7 +1756,6 @@ const LOG_L2: [[f64; 2]; 32] = [
     ],
 ];
 
-// idx 48 line 1438 src c
 const LOG_C: [f64; 4] = [
     f64::from_bits(0xbfdfffffffffffd3),
     f64::from_bits(0x3fd55555555543d5),
@@ -1778,7 +1763,6 @@ const LOG_C: [f64; 4] = [
     f64::from_bits(0x3fc999a692c56e4e),
 ];
 
-// idx 51 line 1489 src h1
 const LOG_H1: [[f64; 3]; 33] = [
     [
         f64::from_bits(0x0000000000000000),
@@ -1947,7 +1931,6 @@ const LOG_H1: [[f64; 3]; 33] = [
     ],
 ];
 
-// idx 52 line 1543 src h2
 const LOG_H2: [[f64; 3]; 33] = [
     [
         f64::from_bits(0x0000000000000000),
@@ -2116,7 +2099,6 @@ const LOG_H2: [[f64; 3]; 33] = [
     ],
 ];
 
-// idx 53 line 1587 src c
 const LOG_C_ACC: [[f64; 2]; 9] = [
     [
         f64::from_bits(0x3ff0000000000000),
@@ -2156,7 +2138,6 @@ const LOG_C_ACC: [[f64; 2]; 9] = [
     ],
 ];
 
-// idx 54 line 1602 src stpi
 const STPI: [[f64; 2]; 65] = [
     [
         f64::from_bits(0x0000000000000000),
@@ -2420,20 +2401,17 @@ const STPI: [[f64; 2]; 65] = [
     ],
 ];
 
-// idx 55 line 1688 src c
 const SINPID_C_NEAR: [f64; 2] = [
     f64::from_bits(0xbffa51a6625307d3),
     f64::from_bits(0xbc816cc8f2044a4a),
 ];
 
-// idx 56 line 1690 src cl
 const SINPID_CL_NEAR: [f64; 3] = [
     f64::from_bits(0x3fe9f9cb402bc42a),
     f64::from_bits(0xbfc86a8e46ddf78d),
     f64::from_bits(0x3f9ac644e7aa33e6),
 ];
 
-// idx 57 line 1701 src c
 const SINPID_C_COEFF: [f64; 4] = [
     f64::from_bits(0xbf33bd3cc9be45de),
     f64::from_bits(0x3e503c1f081b5ac4),
@@ -2441,7 +2419,6 @@ const SINPID_C_COEFF: [f64; 4] = [
     f64::from_bits(0x3c4e1f4826790653),
 ];
 
-// idx 58 line 1705 src s
 const SINPID_S_COEFF: [f64; 4] = [
     f64::from_bits(0x3f9921fb54442d18),
     f64::from_bits(0xbec4abbce625be53),
@@ -2449,7 +2426,6 @@ const SINPID_S_COEFF: [f64; 4] = [
     f64::from_bits(0xbcd32d26e446373a),
 ];
 
-// idx 59 line 1723 src c
 const SINPID_ACC_C: [[f64; 2]; 5] = [
     [
         f64::from_bits(0xbf33bd3cc9be45de),
@@ -2473,7 +2449,6 @@ const SINPID_ACC_C: [[f64; 2]; 5] = [
     ],
 ];
 
-// idx 60 line 1729 src s
 const SINPID_ACC_S: [[f64; 2]; 6] = [
     [
         f64::from_bits(0x3f9921fb54442d18),
@@ -2501,7 +2476,6 @@ const SINPID_ACC_S: [[f64; 2]; 6] = [
     ],
 ];
 
-// idx 61 line 1774 src c
 const LGAMMA_ASYM_ACC_C1: [[f64; 2]; 8] = [
     [
         f64::from_bits(0x3fdacfe390c97d69),
@@ -2537,7 +2511,6 @@ const LGAMMA_ASYM_ACC_C1: [[f64; 2]; 8] = [
     ],
 ];
 
-// idx 62 line 1798 src c
 const LGAMMA_ASYM_ACC_C2: [[f64; 2]; 12] = [
     [
         f64::from_bits(0x3fdacfe390c97d69),
@@ -2589,7 +2562,6 @@ const LGAMMA_ASYM_ACC_C2: [[f64; 2]; 12] = [
     ],
 ];
 
-// idx 63 line 1816 src c
 const LGAMMA_ASYM_ACC_C3: [[f64; 2]; 28] = [
     [
         f64::from_bits(0x3fdacfe390c97d69),
@@ -2704,14 +2676,12 @@ const LGAMMA_ASYM_ACC_C3: [[f64; 2]; 28] = [
         f64::from_bits(0x3f80e3f2ea42a0e0),
     ],
 ];
-// idx 3 line 277 src x0
 const LGAMMA_ACC_X0_0: [f64; 3] = [
     f64::from_bits(0x4003a7fc9600f86c),
     f64::from_bits(0x3c855f64f98af8d0),
     f64::from_bits(0x391c4b0cd201366a),
 ];
 
-// idx 4 line 280 src c
 const LGAMMA_ACC_C_0: [[f64; 2]; 26] = [
     [
         f64::from_bits(0x3ff83fe966af535f),
@@ -2819,14 +2789,12 @@ const LGAMMA_ACC_C_0: [[f64; 2]; 26] = [
     ],
 ];
 
-// idx 5 line 340 src x0
 const LGAMMA_ACC_X0_1: [f64; 3] = [
     f64::from_bits(0x4005fb410a1bd901),
     f64::from_bits(0xbc9a19a96d2e6f85),
     f64::from_bits(0xb93140b4ff4b7d60),
 ];
 
-// idx 6 line 342 src c
 const LGAMMA_ACC_C_1: [[f64; 2]; 27] = [
     [
         f64::from_bits(0xbffea12da904b18c),
@@ -2938,14 +2906,12 @@ const LGAMMA_ACC_C_1: [[f64; 2]; 27] = [
     ],
 ];
 
-// idx 7 line 382 src x0
 const LGAMMA_ACC_X0_2: [f64; 3] = [
     f64::from_bits(0x4009260dbc9e59af),
     f64::from_bits(0x3caf717cd335a7b3),
     f64::from_bits(0x394d32a2a65bfd63),
 ];
 
-// idx 8 line 384 src c
 const LGAMMA_ACC_C_2: [[f64; 2]; 20] = [
     [
         f64::from_bits(0x401f20a65f2fac55),
@@ -3029,14 +2995,12 @@ const LGAMMA_ACC_C_2: [[f64; 2]; 20] = [
     ],
 ];
 
-// idx 9 line 416 src x0
 const LGAMMA_ACC_X0_3: [f64; 3] = [
     f64::from_bits(0x400fa471547c2fe5),
     f64::from_bits(0x3c770d4561291237),
     f64::from_bits(0xb909e6fadbbc171a),
 ];
 
-// idx 10 line 419 src c
 const LGAMMA_ACC_C_3: [[f64; 2]; 20] = [
     [
         f64::from_bits(0xc034b99d966c5647),
@@ -3120,14 +3084,12 @@ const LGAMMA_ACC_C_3: [[f64; 2]; 20] = [
     ],
 ];
 
-// idx 11 line 452 src x0
 const LGAMMA_ACC_X0_4: [f64; 3] = [
     f64::from_bits(0x4010284e78599581),
     f64::from_bits(0xbcae78c1e9e43cfe),
     f64::from_bits(0x3932ac17bfd6be92),
 ];
 
-// idx 12 line 454 src c
 const LGAMMA_ACC_C_4: [[f64; 2]; 24] = [
     [
         f64::from_bits(0x403aca5cf4921642),
@@ -3227,14 +3189,12 @@ const LGAMMA_ACC_C_4: [[f64; 2]; 24] = [
     ],
 ];
 
-// idx 13 line 491 src x0
 const LGAMMA_ACC_X0_5: [f64; 3] = [
     f64::from_bits(0x4013f7577a6eeafd),
     f64::from_bits(0xbca5de5eab7f12cf),
     f64::from_bits(0x3914075f5e0494a2),
 ];
 
-// idx 14 line 493 src c
 const LGAMMA_ACC_C_5: [[f64; 2]; 19] = [
     [
         f64::from_bits(0xc05d224a3ef9e41f),
@@ -3314,14 +3274,12 @@ const LGAMMA_ACC_C_5: [[f64; 2]; 19] = [
     ],
 ];
 
-// idx 15 line 524 src x0
 const LGAMMA_ACC_X0_6: [f64; 3] = [
     f64::from_bits(0x4014086a57f0b6d9),
     f64::from_bits(0x3c895262b72ca9ca),
     f64::from_bits(0x392bd98d5e0861aa),
 ];
 
-// idx 16 line 527 src c
 const LGAMMA_ACC_C_6: [[f64; 2]; 19] = [
     [
         f64::from_bits(0x405ed72e0829ae02),
@@ -3401,14 +3359,12 @@ const LGAMMA_ACC_C_6: [[f64; 2]; 19] = [
     ],
 ];
 
-// idx 17 line 558 src x0
 const LGAMMA_ACC_X0_7: [f64; 3] = [
     f64::from_bits(0x4017fe92f591f40d),
     f64::from_bits(0x3cb7dd4ed62cbd32),
     f64::from_bits(0xb932071c071a2146),
 ];
 
-// idx 18 line 561 src c
 const LGAMMA_ACC_C_7: [[f64; 2]; 24] = [
     [
         f64::from_bits(0xc08661f6a43a5e12),
@@ -3508,14 +3464,12 @@ const LGAMMA_ACC_C_7: [[f64; 2]; 24] = [
     ],
 ];
 
-// idx 19 line 598 src x0
 const LGAMMA_ACC_X0_8: [f64; 3] = [
     f64::from_bits(0x4018016b25897c8d),
     f64::from_bits(0xbc927e0f49a4ba72),
     f64::from_bits(0x39172e1ab15a4d03),
 ];
 
-// idx 20 line 600 src c
 const LGAMMA_ACC_C_8: [[f64; 2]; 24] = [
     [
         f64::from_bits(0x40869de49e3af2aa),
@@ -3615,14 +3569,12 @@ const LGAMMA_ACC_C_8: [[f64; 2]; 24] = [
     ],
 ];
 
-// idx 21 line 637 src x0
 const LGAMMA_ACC_X0_9: [f64; 3] = [
     f64::from_bits(0x401bffcbf76b86f0),
     f64::from_bits(0xbc6853b29347b806),
     f64::from_bits(0x3900fa018051dd41),
 ];
 
-// idx 22 line 639 src c
 const LGAMMA_ACC_C_9: [[f64; 2]; 25] = [
     [
         f64::from_bits(0xc0b3abf7a5cea91b),
@@ -3726,14 +3678,12 @@ const LGAMMA_ACC_C_9: [[f64; 2]; 25] = [
     ],
 ];
 
-// idx 23 line 677 src x0
 const LGAMMA_ACC_X0_10: [f64; 3] = [
     f64::from_bits(0x401c0033fdedfe1f),
     f64::from_bits(0xbcb20bb7d2324678),
     f64::from_bits(0xb95f5536678d69d3),
 ];
 
-// idx 24 line 679 src c
 const LGAMMA_ACC_C_10: [[f64; 2]; 24] = [
     [
         f64::from_bits(0x40b3b407aa387bd1),
@@ -3833,14 +3783,12 @@ const LGAMMA_ACC_C_10: [[f64; 2]; 24] = [
     ],
 ];
 
-// idx 25 line 716 src x0
 const LGAMMA_ACC_X0_11: [f64; 3] = [
     f64::from_bits(0x401ffff97f8159cf),
     f64::from_bits(0x3c8e54f415a91586),
     f64::from_bits(0x39253a5d106f9a3e),
 ];
 
-// idx 26 line 718 src c
 const LGAMMA_ACC_C_11: [[f64; 2]; 27] = [
     [
         f64::from_bits(0xc0e3af76fe4c2fab),
@@ -3952,14 +3900,12 @@ const LGAMMA_ACC_C_11: [[f64; 2]; 27] = [
     ],
 ];
 
-// idx 27 line 758 src x0
 const LGAMMA_ACC_X0_12: [f64; 3] = [
     f64::from_bits(0x402000034028b3f9),
     f64::from_bits(0x3cbf60cb3cec1ced),
     f64::from_bits(0xb95ea26620d6b1ca),
 ];
 
-// idx 28 line 760 src c
 const LGAMMA_ACC_C_12: [[f64; 2]; 27] = [
     [
         f64::from_bits(0x40e3b088fed67718),
@@ -4071,14 +4017,12 @@ const LGAMMA_ACC_C_12: [[f64; 2]; 27] = [
     ],
 ];
 
-// idx 29 line 801 src x0
 const LGAMMA_ACC_X0_13: [f64; 3] = [
     f64::from_bits(0x4021ffffa3884bd0),
     f64::from_bits(0x3caff90c9d2ae925),
     f64::from_bits(0xb9430c0efef78c04),
 ];
 
-// idx 30 line 803 src c
 const LGAMMA_ACC_C_13: [[f64; 2]; 28] = [
     [
         f64::from_bits(0xc11625edfc63db2f),
@@ -4194,14 +4138,12 @@ const LGAMMA_ACC_C_13: [[f64; 2]; 28] = [
     ],
 ];
 
-// idx 31 line 844 src x0
 const LGAMMA_ACC_X0_14: [f64; 3] = [
     f64::from_bits(0x402200005c7768fb),
     f64::from_bits(0x3c9b5b610ffb70d4),
     f64::from_bits(0x393deb7ad09ec5ea),
 ];
 
-// idx 32 line 846 src c
 const LGAMMA_ACC_C_14: [[f64; 2]; 28] = [
     [
         f64::from_bits(0x4116261203919440),
@@ -4317,14 +4259,12 @@ const LGAMMA_ACC_C_14: [[f64; 2]; 28] = [
     ],
 ];
 
-// idx 33 line 887 src x0
 const LGAMMA_ACC_X0_15: [f64; 3] = [
     f64::from_bits(0x4023fffff6c0d7c0),
     f64::from_bits(0xbcc197cea8c42d7d),
     f64::from_bits(0xb967072c5a292198),
 ];
 
-// idx 34 line 889 src c
 const LGAMMA_ACC_C_15: [[f64; 2]; 27] = [
     [
         f64::from_bits(0xc14baf7da5f3795d),
@@ -4436,14 +4376,12 @@ const LGAMMA_ACC_C_15: [[f64; 2]; 27] = [
     ],
 ];
 
-// idx 35 line 929 src x0
 const LGAMMA_ACC_X0_16: [f64; 3] = [
     f64::from_bits(0x40240000093f2777),
     f64::from_bits(0x3cb927b45d95e154),
     f64::from_bits(0x3950780c21b6e452),
 ];
 
-// idx 36 line 931 src c
 const LGAMMA_ACC_C_16: [[f64; 2]; 27] = [
     [
         f64::from_bits(0x414baf825a0c63b2),
