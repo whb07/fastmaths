@@ -1,3 +1,9 @@
+//! sinh(x) implementation.
+//!
+//! Uses expm1 for small |x| to avoid cancellation; switches to exp for medium
+//! and handles overflow for large inputs. Coefficients and thresholds mirror
+//! fdlibm/glibc strategies.
+
 use super::{exp, expm1};
 
 const TINY: f64 = 3.725_290_298_461_914e-09; // 2^-28

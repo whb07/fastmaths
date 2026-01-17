@@ -1,3 +1,8 @@
+//! remainder(x,y) implementation.
+//!
+//! Implements IEEE-754 remainder with ties-to-even quotient selection. Internally
+//! uses remquo-style reduction to compute both remainder and rounding direction.
+
 use super::fmod;
 
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;

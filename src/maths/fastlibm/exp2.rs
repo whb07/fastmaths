@@ -1,3 +1,9 @@
+//! exp2(x) implementation.
+//!
+//! Splits x into integer k and fractional r, uses a 2^(i/N) lookup table (N=128)
+//! and a polynomial for 2^r on a small interval. Handles overflow/underflow
+//! boundaries explicitly; constants sourced from glibc/core-math.
+
 use super::{exp::EXP_TAB_U64, f64_from_bits, f64_to_bits};
 
 const EXP_TABLE_BITS: u32 = 7;

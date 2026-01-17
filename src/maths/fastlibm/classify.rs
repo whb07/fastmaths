@@ -1,3 +1,9 @@
+//! IEEE-754 classification helpers.
+//!
+//! Implements fpclassify/isfinite/isinf/isnan/signbit using exponent/mantissa
+//! bit masks; no libm dependencies. These are used throughout fast paths to
+//! preserve NaN payloads and correct zero-sign behavior.
+
 use super::f64_to_bits;
 
 pub const FP_NAN: i32 = 0;

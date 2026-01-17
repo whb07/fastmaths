@@ -1,3 +1,8 @@
+//! ilogb(x) implementation.
+//!
+//! Extracts unbiased exponent from IEEE-754 bits, with normalization for
+//! subnormals. Matches glibc behavior for zero, NaN, and infinity.
+
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;
 const EXP_MASK: u64 = 0x7ff0_0000_0000_0000u64;
 const MANT_MASK: u64 = 0x000f_ffff_ffff_ffffu64;

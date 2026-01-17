@@ -1,3 +1,9 @@
+//! Fused multiply-add helper.
+//!
+//! Uses runtime CPU feature detection to select hardware FMA where available.
+//! Falls back to a software-fused path using Dekker splitting (2^27+1) to
+//! track the product error and preserve correct rounding without libm.
+
 const SPLIT: f64 = 134_217_729.0; // 2^27 + 1
 
 #[inline(always)]

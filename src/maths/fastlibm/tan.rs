@@ -1,3 +1,9 @@
+//! tan(x) implementation.
+//!
+//! Performs argument reduction to [-pi/4, pi/4] and evaluates an odd rational
+//! polynomial. Quadrant selection and reciprocal identities handle |x|>pi/4.
+//! Constants and tables follow fdlibm/glibc conventions.
+
 use super::lo_word;
 use super::trig::branred;
 use super::utan_tables::*;

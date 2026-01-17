@@ -1,3 +1,9 @@
+//! nextafter(x,y) implementation.
+//!
+//! Moves x to the adjacent representable value in the direction of y by
+//! incrementing/decrementing the bit pattern. Handles zero, subnormals, NaNs,
+//! and infinities per IEEE-754.
+
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;
 
 #[inline(always)]

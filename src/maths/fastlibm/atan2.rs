@@ -1,3 +1,8 @@
+//! atan2(y,x) implementation.
+//!
+//! Handles quadrants, signed zeros, and infinities explicitly, then reduces to
+//! atan(y/x) using the atan polynomial core. Matches glibc sign/edge behavior.
+
 use super::atan;
 
 const PI: f64 = core::f64::consts::PI;

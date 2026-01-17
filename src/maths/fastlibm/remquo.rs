@@ -1,3 +1,8 @@
+//! remquo(x,y) implementation.
+//!
+//! Computes IEEE remainder and low bits of the quotient. Uses exponent alignment
+//! and subtractive reduction with correct tie handling, mirroring glibc behavior.
+
 use super::{remainder, rint};
 
 const EXP_MASK: u64 = 0x7ff0_0000_0000_0000u64;

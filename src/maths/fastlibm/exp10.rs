@@ -1,3 +1,8 @@
+//! exp10(x) implementation.
+//!
+//! Computes exp10 via exp2(x*log2(10)) using split high/low log2(10) constants
+//! to limit error; reuses exp2 polynomial/table core for speed and accuracy.
+
 use super::exp::EXP_TAB_U64;
 use super::{f64_from_bits, f64_to_bits};
 

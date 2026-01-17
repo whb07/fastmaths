@@ -1,3 +1,8 @@
+//! cbrt(x) implementation.
+//!
+//! Splits exponent by 3, uses a polynomial for the mantissa, and refines with
+//! Newton iterations. This mirrors glibc/core-math style for accuracy and speed.
+
 use super::scalbn_internal;
 
 const CBRT2: f64 = 1.259_921_049_894_873_164_8; // 2^(1/3)

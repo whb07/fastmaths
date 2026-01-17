@@ -1,3 +1,9 @@
+//! acos(x) implementation.
+//!
+//! Uses a rational approximation for |x|≤0.5 and the standard fdlibm transform
+//! around sqrt((1±x)/2) for |x|>0.5. Constants include split pi/2 hi/lo parts
+//! for extra precision.
+
 use super::sqrt;
 
 #[allow(clippy::approx_constant)]

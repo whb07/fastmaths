@@ -1,3 +1,9 @@
+//! exp(x) implementation.
+//!
+//! Uses k+r decomposition: x ≈ k*ln2/N + r, with N=128 table entries of 2^(i/N).
+//! The small remainder r is approximated with a minimax polynomial (degree 5).
+//! Constants and tables are derived from glibc/core-math sources.
+
 use super::{f64_from_bits, f64_to_bits, fma_internal, is_inf_bits, is_nan_bits};
 
 // ========= glibc-derived exp table (N=128) =========

@@ -1,3 +1,8 @@
+//! Precomputed tables for tangent kernels and reduction.
+//!
+//! Includes split constants used to stabilize tan polynomial evaluation and
+//! argument reduction across quadrants, mirroring glibc/core-math tables.
+
 pub(super) const UTAN_D3: f64 = f64::from_bits(0x3fd5555555555555);
 pub(super) const UTAN_D5: f64 = f64::from_bits(0x3fc11111111107c6);
 pub(super) const UTAN_D7: f64 = f64::from_bits(0x3faba1ba1cdb8745);

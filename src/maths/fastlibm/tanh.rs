@@ -1,3 +1,9 @@
+//! tanh(x) implementation.
+//!
+//! Uses expm1(2|x|) to compute tanh with reduced cancellation for |x|<1, and
+//! saturates to ±1 for large inputs. Test builds optionally use MPFR to validate
+//! ≤1 ULP.
+
 #[cfg(not(all(test, feature = "mpfr")))]
 use super::expm1;
 

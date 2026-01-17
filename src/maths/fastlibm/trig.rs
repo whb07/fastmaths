@@ -1,3 +1,9 @@
+//! Shared trig range reduction and kernels.
+//!
+//! Implements rem_pio2 with fast paths for small/medium inputs and Payne–Hanek
+//! reduction for huge arguments using 2/pi tables. Kernel sin/cos polynomials
+//! (odd/even) are evaluated on |x|≤pi/4; FMA is used where available.
+
 #![allow(
     clippy::collapsible_if,
     clippy::needless_late_init,

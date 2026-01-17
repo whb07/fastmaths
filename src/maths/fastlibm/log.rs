@@ -1,3 +1,9 @@
+//! Natural logarithm ln(x) implementation.
+//!
+//! Decomposes x = 2^k * m, uses table-driven reciprocal/log segments for m
+//! (5-bit index) and a minimax polynomial in the reduced variable. FMA is used
+//! where available for error-compensated evaluation; constants from glibc/core-math.
+
 use super::{f64_from_bits, f64_to_bits};
 
 // ========= glibc-derived log tables (N=128) =========

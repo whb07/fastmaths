@@ -1,3 +1,9 @@
+//! IEEE-754 rounding utilities (rint/nearbyint/round/trunc/ceil/floor and integer variants).
+//!
+//! Uses the classic 2^52 "add-sub" trick and bit masks for fast rounding
+//! with correct ties-to-even behavior. Integer forms clamp and handle NaN/Inf
+//! per glibc semantics.
+
 use super::{f64_from_bits, f64_to_bits, floor_f64};
 
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;

@@ -1,3 +1,8 @@
+//! acosh(x) implementation.
+//!
+//! Piecewise algorithm for x>=1: near 1 uses log1p with sqrt(x-1); moderate
+//! uses log(2x) + correction; large values avoid loss of precision.
+
 use super::{ln, log1p, sqrt};
 
 #[inline(always)]

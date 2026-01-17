@@ -1,3 +1,8 @@
+//! modf(x) implementation.
+//!
+//! Splits x into integral and fractional parts by clearing mantissa bits based
+//! on exponent. Preserves sign of zero and handles NaN/Inf explicitly.
+
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;
 const EXP_MASK: u64 = 0x7ff0_0000_0000_0000u64;
 

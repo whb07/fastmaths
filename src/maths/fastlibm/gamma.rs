@@ -1,3 +1,10 @@
+//! lgamma/tgamma implementation (core-math port).
+//!
+//! Implements lgamma via table-driven log/sinpi reductions, reflection formula,
+//! and asymptotic expansions. Uses double-double arithmetic (ddcoremath) to keep
+//! error below 1 ULP in difficult regions. Constants and tables are sourced from
+//! glibc/core-math (see glibc/ directory).
+
 #[cfg(not(all(test, feature = "mpfr")))]
 use super::exp;
 use super::{floor, rint};

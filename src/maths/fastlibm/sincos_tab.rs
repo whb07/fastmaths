@@ -1,3 +1,8 @@
+//! Precomputed sin/cos tables for range reduction.
+//!
+//! Tables store split high/low parts of sin/cos at evenly spaced points used by
+//! rem_pio2 to minimize reduction error for medium/large arguments.
+
 // Generated from glibc sysdeps/ieee754/dbl-64/sincostab.c (LITTLE_ENDI).
 // Stored as u32 pairs to preserve exact bit patterns without depending on endianness.
 

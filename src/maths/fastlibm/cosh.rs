@@ -1,3 +1,8 @@
+//! cosh(x) implementation.
+//!
+//! Uses expm1 for small |x| and exp-based formulas for medium/large inputs.
+//! Carefully handles overflow thresholds and preserves symmetry cosh(x)=cosh(-x).
+
 use super::exp;
 
 const TINY: f64 = 3.725_290_298_461_914e-09; // 2^-28

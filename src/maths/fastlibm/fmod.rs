@@ -1,3 +1,9 @@
+//! fmod(x,y) implementation.
+//!
+//! Computes the remainder with truncation toward zero by aligning exponents and
+//! iterative subtraction using bit operations. Avoids libm division while
+//! preserving IEEE edge cases.
+
 use super::{f64_from_bits, floor_f64};
 
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;

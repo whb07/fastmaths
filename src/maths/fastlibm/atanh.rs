@@ -1,3 +1,8 @@
+//! atanh(x) implementation.
+//!
+//! Uses log1p-based formulas: atanh(x)=0.5*log1p(2x/(1-x)) with a small-x
+//! series for accuracy near zero and proper handling near |x|=1.
+
 use super::log1p;
 
 #[inline(always)]

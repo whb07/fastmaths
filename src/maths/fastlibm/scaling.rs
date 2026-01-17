@@ -1,3 +1,9 @@
+//! Scaling helpers: frexp/ldexp/scalbn/scalbln.
+//!
+//! Implements exponent extraction and adjustment via IEEE-754 bit fields.
+//! Subnormals are normalized by multiplying with 2^54, then re-scaling the
+//! result to avoid underflow/overflow without libm calls.
+
 use super::{f64_from_bits, f64_to_bits, scalbn_internal};
 
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;

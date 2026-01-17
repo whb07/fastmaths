@@ -1,3 +1,9 @@
+//! expm1(x) implementation.
+//!
+//! Uses a dedicated small-x polynomial to avoid catastrophic cancellation and
+//! switches to exp(x)-1 for larger magnitudes. Polynomial degree and constants
+//! match fdlibm/glibc style minimax fits.
+
 use super::{hi_word, lo_word, with_hi_lo};
 
 const ONE: f64 = 1.0;

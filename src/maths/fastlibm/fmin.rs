@@ -1,3 +1,8 @@
+//! fmin implementation.
+//!
+//! IEEE-754 minimum with NaN handling matching glibc: if exactly one operand is
+//! NaN, returns the other; preserves signed zeros.
+
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;
 
 #[inline(always)]

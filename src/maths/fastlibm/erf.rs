@@ -1,3 +1,9 @@
+//! erf/erfc implementation.
+//!
+//! Piecewise rational approximations for |x| in several ranges (small, medium,
+//! large). Uses exp_with_tail to preserve accuracy in erfc tails. Coefficients
+//! are fdlibm-derived minimax fits.
+
 use super::exp::exp_with_tail;
 use super::{f64_to_bits, hi_word, with_hi_lo};
 

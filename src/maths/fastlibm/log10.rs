@@ -1,3 +1,8 @@
+//! log10(x) implementation.
+//!
+//! Computes log10 via ln(x) scaled by log10(e) with high/low constants. This
+//! mirrors glibc-style error-compensated scaling for ≤1 ULP accuracy.
+
 use super::{fma_internal, ln, scalbn_internal};
 use core::f64::consts::{LOG10_2, LOG10_E};
 

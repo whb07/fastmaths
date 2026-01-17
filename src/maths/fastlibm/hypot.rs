@@ -1,3 +1,8 @@
+//! hypot(x,y) implementation.
+//!
+//! Scales inputs to avoid overflow/underflow, orders by magnitude, then computes
+//! sqrt(x^2+y^2) with guarded squaring. This follows fdlibm-style stable formulas.
+
 use super::{scalbn_internal, sqrt};
 
 #[inline]

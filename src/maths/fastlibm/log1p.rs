@@ -1,3 +1,9 @@
+//! log1p(x) implementation.
+//!
+//! For tiny x uses series/polynomial to avoid cancellation; for larger x uses
+//! log(1+x) with compensated argument reduction. Coefficients are derived from
+//! glibc/fdlibm minimax fits.
+
 use super::{hi_word, lo_word, with_hi_lo};
 
 const LN2_HI: f64 = 6.931_471_803_691_238_164_90e-01;

@@ -1,3 +1,9 @@
+//! asin(x) implementation.
+//!
+//! Uses a rational approximation r(z)=P(z)/Q(z) for |x|≤0.5 and transforms
+//! asin(x)=pi/2-2*asin(sqrt((1-|x|)/2)) for |x|>0.5. Polynomial degrees and
+//! constants are fdlibm-style.
+
 use super::{hi_word, lo_word, sqrt, with_hi_lo};
 
 #[allow(clippy::approx_constant)]

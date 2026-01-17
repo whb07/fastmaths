@@ -1,3 +1,10 @@
+//! Fastlibm module re-exports and shared helpers.
+//!
+//! Algorithms are drawn from fdlibm/glibc/core-math with table-driven and
+//! bit-level implementations designed for no_std. This module also provides
+//! runtime FMA selection and shared bit-manipulation helpers used across
+//! the math routines for tight error control.
+
 #![allow(non_camel_case_types)]
 #![allow(clippy::excessive_precision)]
 #![allow(clippy::unusual_byte_groupings)]

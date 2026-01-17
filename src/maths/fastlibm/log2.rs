@@ -1,3 +1,8 @@
+//! log2(x) implementation.
+//!
+//! Computes log2 via ln(x) scaled by log2(e) with split constants to reduce
+//! rounding error; preserves special-case handling per IEEE-754.
+
 use super::ln;
 use core::f64::consts::LOG2_E;
 

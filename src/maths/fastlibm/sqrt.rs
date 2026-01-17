@@ -1,3 +1,8 @@
+//! sqrt(x) implementation.
+//!
+//! Uses an initial bit-level approximation followed by Newton-Raphson refinement.
+//! Subnormals are scaled to avoid underflow; rounding behavior matches IEEE-754.
+
 use super::scalbn_internal;
 
 #[cfg(target_arch = "x86_64")]

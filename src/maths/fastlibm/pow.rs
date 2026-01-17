@@ -1,3 +1,9 @@
+//! pow(x,y) implementation.
+//!
+//! Handles special cases (negative bases, integer exponents, NaN/Inf) and reduces
+//! to exp(y*log(x)) for the general case. Uses ln/exp cores with split constants
+//! for accuracy.
+
 use super::{f64_from_bits, f64_to_bits};
 
 const POW_LOG_TABLE_BITS: u32 = 7;

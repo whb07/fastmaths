@@ -1,3 +1,9 @@
+//! atan(x) implementation.
+//!
+//! Uses argument reduction: atan(x) = pi/2 - atan(1/x) for large |x| and odd
+//! polynomial approximation on a small interval. Coefficients are fdlibm-derived
+//! minimax fits.
+
 use super::hi_word;
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
