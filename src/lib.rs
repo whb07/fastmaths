@@ -3,13 +3,13 @@
 #[cfg(test)]
 extern crate std;
 
-pub mod maths;
+mod math;
 
-pub use maths::fastlibm;
+pub use self::math::*;
 
 #[cfg(test)]
 mod tests {
-    use super::fastlibm;
+    use crate as fastlibm;
     use libloading::Library;
     #[cfg(feature = "mpfr")]
     use rug::{Float, ops::Pow};

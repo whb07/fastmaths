@@ -1,6 +1,6 @@
 #![cfg(feature = "mpfr")]
 
-use fastmaths::fastlibm;
+use fastmaths as fastlibm;
 use rug::Float;
 use std::env;
 

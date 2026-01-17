@@ -1,5 +1,5 @@
 use criterion::Criterion;
-use fastmaths::fastlibm;
+use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs_i64_arg, configure_criterion, gen_range, glibc_scalbln};

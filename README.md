@@ -78,10 +78,10 @@ fastmaths = "0.1.0"
 Example usage:
 
 ```rust
-use fastmaths::fastlibm;
+use fastmaths::exp;
 
 let x = 2.0_f64;
-let result = fastlibm::exp(x);
+let result = exp(x);
 println!("e^{} = {}", x, result);
 ```
 

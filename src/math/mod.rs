@@ -1,7 +1,7 @@
-//! Fastlibm module re-exports and shared helpers.
+//! Math module re-exports and shared helpers.
 //!
 //! Algorithms are drawn from fdlibm/glibc/core-math with table-driven and
-//! bit-level implementations designed for no_std. This module also provides
+//! bit-level implementations designed for no_std. This module provides
 //! runtime FMA selection and shared bit-manipulation helpers used across
 //! the math routines for tight error control.
 
