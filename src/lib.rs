@@ -16,6 +16,7 @@ mod tests {
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, FRAC_PI_6, PI, TAU};
     use std::path::Path;
     use std::string::String;
+    use std::sync::OnceLock;
     use std::vec;
     use std::vec::Vec;
     use std::{eprintln, format};
@@ -176,20 +177,15 @@ mod tests {
         mpfr_ldexp_f64(x, n as i32)
     }
 
-    #[cfg(feature = "mpfr")]
     fn clamp_f64_to_i64(x: f64) -> i64 {
         if x.is_nan() {
             return i64::MIN;
         }
         if !x.is_finite() {
-            return if x.is_sign_negative() {
-                i64::MIN
-            } else {
-                i64::MAX
-            };
+            return i64::MIN;
         }
         if x > i64::MAX as f64 {
-            i64::MAX
+            i64::MIN
         } else if x < i64::MIN as f64 {
             i64::MIN
         } else {
@@ -560,7 +556,11 @@ mod tests {
 
     #[cfg(not(feature = "mpfr"))]
     fn rint_reference(x: f64) -> f64 {
-        x.round()
+        if let Some(f) = glibc_sym_f64(b"rint") {
+            // Safety: symbol is loaded from libm with correct signature.
+            return unsafe { f(x) };
+        }
+        x.round_ties_even()
     }
 
     #[cfg(feature = "mpfr")]
@@ -570,7 +570,11 @@ mod tests {
 
     #[cfg(not(feature = "mpfr"))]
     fn nearbyint_reference(x: f64) -> f64 {
-        x.round()
+        if let Some(f) = glibc_sym_f64(b"nearbyint") {
+            // Safety: symbol is loaded from libm with correct signature.
+            return unsafe { f(x) };
+        }
+        rint_reference(x)
     }
 
     #[cfg(feature = "mpfr")]
@@ -582,7 +586,11 @@ mod tests {
 
     #[cfg(not(feature = "mpfr"))]
     fn lrint_reference(x: f64) -> i64 {
-        x.round() as i64
+        if let Some(f) = glibc_sym_i64(b"lrint") {
+            // Safety: symbol is loaded from libm with correct signature.
+            return unsafe { f(x) };
+        }
+        clamp_f64_to_i64(x.round_ties_even())
     }
 
     #[cfg(feature = "mpfr")]
@@ -592,7 +600,11 @@ mod tests {
 
     #[cfg(not(feature = "mpfr"))]
     fn llrint_reference(x: f64) -> i64 {
-        x.round() as i64
+        if let Some(f) = glibc_sym_i64(b"llrint") {
+            // Safety: symbol is loaded from libm with correct signature.
+            return unsafe { f(x) };
+        }
+        lrint_reference(x)
     }
 
     #[cfg(feature = "mpfr")]
@@ -604,7 +616,11 @@ mod tests {
 
     #[cfg(not(feature = "mpfr"))]
     fn lround_reference(x: f64) -> i64 {
-        x.round() as i64
+        if let Some(f) = glibc_sym_i64(b"lround") {
+            // Safety: symbol is loaded from libm with correct signature.
+            return unsafe { f(x) };
+        }
+        clamp_f64_to_i64(x.round())
     }
 
     #[cfg(feature = "mpfr")]
@@ -614,7 +630,11 @@ mod tests {
 
     #[cfg(not(feature = "mpfr"))]
     fn llround_reference(x: f64) -> i64 {
-        x.round() as i64
+        if let Some(f) = glibc_sym_i64(b"llround") {
+            // Safety: symbol is loaded from libm with correct signature.
+            return unsafe { f(x) };
+        }
+        clamp_f64_to_i64(x.round())
     }
 
     #[cfg(feature = "mpfr")]
@@ -808,6 +828,10 @@ mod tests {
 
     #[cfg(not(feature = "mpfr"))]
     fn tanh_reference(x: f64) -> f64 {
+        if let Some(f) = glibc_sym_f64(b"tanh") {
+            // Safety: symbol is loaded from libm with correct signature.
+            return unsafe { f(x) };
+        }
         x.tanh()
     }
 
@@ -818,6 +842,10 @@ mod tests {
 
     #[cfg(not(feature = "mpfr"))]
     fn asinh_reference(x: f64) -> f64 {
+        if let Some(f) = glibc_sym_f64(b"asinh") {
+            // Safety: symbol is loaded from libm with correct signature.
+            return unsafe { f(x) };
+        }
         x.asinh()
     }
 
@@ -828,6 +856,10 @@ mod tests {
 
     #[cfg(not(feature = "mpfr"))]
     fn acosh_reference(x: f64) -> f64 {
+        if let Some(f) = glibc_sym_f64(b"acosh") {
+            // Safety: symbol is loaded from libm with correct signature.
+            return unsafe { f(x) };
+        }
         x.acosh()
     }
 
@@ -838,6 +870,10 @@ mod tests {
 
     #[cfg(not(feature = "mpfr"))]
     fn atanh_reference(x: f64) -> f64 {
+        if let Some(f) = glibc_sym_f64(b"atanh") {
+            // Safety: symbol is loaded from libm with correct signature.
+            return unsafe { f(x) };
+        }
         x.atanh()
     }
 
@@ -979,8 +1015,24 @@ mod tests {
 
     #[cfg(not(feature = "mpfr"))]
     fn remainder_reference(x: f64, y: f64) -> f64 {
-        let q = (x / y).round();
-        x - q * y
+        if let Some(f) = glibc_sym_f64_f64(b"remainder") {
+            // Safety: symbol is loaded from libm with correct signature.
+            return unsafe { f(x, y) };
+        }
+        if !x.is_finite() || !y.is_finite() || y == 0.0 {
+            return f64::NAN;
+        }
+        let ay = y.abs();
+        let mut r = (x % (y + y)).abs();
+        if r + r > ay {
+            r -= ay;
+            if r + r >= ay {
+                r -= ay;
+            } else if r == 0.0 {
+                r = 0.0;
+            }
+        }
+        if x.is_sign_negative() { -r } else { r }
     }
 
     #[cfg(feature = "mpfr")]
@@ -2052,6 +2104,58 @@ mod tests {
             return None;
         }
         Some(path)
+    }
+
+    fn glibc_lib_any() -> Option<&'static Library> {
+        static LIB: OnceLock<Option<Library>> = OnceLock::new();
+        LIB.get_or_init(|| {
+            if let Ok(path) = std::env::var("FASTLIBM_GLIBC_LIBM") {
+                if Path::new(&path).exists() {
+                    if let Ok(lib) = unsafe { Library::new(&path) } {
+                        return Some(lib);
+                    }
+                }
+            }
+            let candidates = [
+                "/lib/x86_64-linux-gnu/libm.so.6",
+                "/usr/lib/x86_64-linux-gnu/libm.so.6",
+                "libm.so.6",
+            ];
+            for path in candidates {
+                if let Ok(lib) = unsafe { Library::new(path) } {
+                    return Some(lib);
+                }
+            }
+            None
+        })
+        .as_ref()
+    }
+
+    fn glibc_sym_f64(name: &'static [u8]) -> Option<unsafe extern "C" fn(f64) -> f64> {
+        let lib = glibc_lib_any()?;
+        unsafe {
+            lib.get::<unsafe extern "C" fn(f64) -> f64>(name)
+                .ok()
+                .map(|s| *s)
+        }
+    }
+
+    fn glibc_sym_f64_f64(name: &'static [u8]) -> Option<unsafe extern "C" fn(f64, f64) -> f64> {
+        let lib = glibc_lib_any()?;
+        unsafe {
+            lib.get::<unsafe extern "C" fn(f64, f64) -> f64>(name)
+                .ok()
+                .map(|s| *s)
+        }
+    }
+
+    fn glibc_sym_i64(name: &'static [u8]) -> Option<unsafe extern "C" fn(f64) -> i64> {
+        let lib = glibc_lib_any()?;
+        unsafe {
+            lib.get::<unsafe extern "C" fn(f64) -> i64>(name)
+                .ok()
+                .map(|s| *s)
+        }
     }
 
     fn assert_ulp_eq_glibc(actual: f64, expected: f64, max_ulps: f64, context: &str) {

@@ -10,9 +10,10 @@ use super::expm1;
 #[cfg(all(test, feature = "mpfr"))]
 use rug::Float;
 
-const TINY: f64 = 3.725_290_298_461_914e-09; // 2^-28
+const TINY: f64 = 2.775_557_561_562_891_4e-17; // 2^-55
 const LARGE: f64 = 22.0;
 const MID: f64 = 1.0;
+const TINY_INEXACT: f64 = 1.0e-300;
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;
 const EXP_MASK: u64 = 0x7ff0_0000_0000_0000u64;
 
@@ -39,18 +40,19 @@ pub fn tanh(x: f64) -> f64 {
         };
     }
     let ax = f64::from_bits(ax_bits);
-    if ax < TINY {
-        return x;
-    }
-    if ax < MID {
-        let t = expm1(2.0 * ax);
-        let r = t / (t + 2.0);
-        return if x.is_sign_negative() { -r } else { r };
-    }
     if ax < LARGE {
-        let t = expm1(2.0 * ax);
-        let r = 1.0 - 2.0 / (t + 2.0);
+        if ax < TINY {
+            return x * (1.0 + x);
+        }
+        let r = if ax >= MID {
+            let t = expm1(2.0 * ax);
+            1.0 - 2.0 / (t + 2.0)
+        } else {
+            let t = expm1(-2.0 * ax);
+            -t / (t + 2.0)
+        };
         return if x.is_sign_negative() { -r } else { r };
     }
-    if x.is_sign_negative() { -1.0 } else { 1.0 }
+    let r = 1.0 - TINY_INEXACT;
+    if x.is_sign_negative() { -r } else { r }
 }

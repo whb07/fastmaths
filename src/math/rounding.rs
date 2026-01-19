@@ -100,14 +100,10 @@ fn clamp_i64(x: f64) -> i64 {
         return i64::MIN;
     }
     if !x.is_finite() {
-        return if x.is_sign_negative() {
-            i64::MIN
-        } else {
-            i64::MAX
-        };
+        return i64::MIN;
     }
     if x > i64::MAX as f64 {
-        i64::MAX
+        i64::MIN
     } else if x < i64::MIN as f64 {
         i64::MIN
     } else {
