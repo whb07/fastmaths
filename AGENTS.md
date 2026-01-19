@@ -48,6 +48,7 @@ This crate aims to implement **fast, correct** replacements for glibc `libm` rou
 - Prefer unit tests close to the code under test (inline `#[cfg(test)]` modules).
 - Name tests descriptively (e.g., `exp_matches_std_for_small_inputs`).
 - When adding numeric tests, include edge cases: `±0.0`, subnormals, `NaN`, `±∞`, and large-magnitude arguments.
+- **MPFR Validation:** Accuracy tests using the `mpfr` feature must be run in a loop of at least 100 iterations to ensure thorough validation across the input distribution.
 
 ## Commit & Pull Request Guidelines
 
