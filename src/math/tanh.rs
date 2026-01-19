@@ -3,13 +3,12 @@
 //! Uses expm1(2|x|) to compute tanh with reduced cancellation for |x|<1, and
 //! saturates to ±1 for large inputs.
 
-use super::{cosh, exp, expm1, fma_internal, sinh};
+use super::{expm1, fma_internal};
 
 const TINY: f64 = 2.775_557_561_562_891_4e-17; // 2^-55
-const SERIES_BOUND: f64 = 0.125;
+const SERIES_BOUND: f64 = 0.3;
 const LARGE: f64 = 22.0;
 const MID: f64 = 1.0;
-const SMALL: f64 = 0.3;
 const TINY_INEXACT: f64 = 1.0e-300;
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;
 const EXP_MASK: u64 = 0x7ff0_0000_0000_0000u64;
@@ -24,10 +23,12 @@ fn recip_refine(d: f64) -> f64 {
 }
 
 #[inline(always)]
-fn sub_one_dd(x: f64) -> (f64, f64) {
-    let hi = x - 1.0;
-    let lo = (x - hi) - 1.0;
-    (hi, lo)
+fn div_dd(nh: f64, nl: f64, dh: f64, dl: f64) -> f64 {
+    let r0 = nh / dh;
+    let p = dh * r0;
+    let e1 = fma_internal(dh, r0, -p);
+    let rem = ((nh - p) - e1) + (nl - r0 * dl);
+    r0 + rem / dh
 }
 
 #[inline(always)]
@@ -40,28 +41,21 @@ fn tanh_series(x: f64) -> f64 {
     const C13: f64 = 0.003_592_128_036_572_481;
     const C15: f64 = -0.001_455_834_387_051_318_2;
     const C17: f64 = 0.000_590_027_440_945_586;
+    const C19: f64 = -0.000_239_129_114_243_552_48;
+    const C21: f64 = 0.000_096_915_379_569_294_51;
+    const C23: f64 = -0.000_039_278_323_883_316_83;
     let z = x * x;
-    let p = fma_internal(
-        z,
-        fma_internal(
-            z,
-            fma_internal(
-                z,
-                fma_internal(
-                    z,
-                    fma_internal(
-                        z,
-                        fma_internal(z, fma_internal(z, C17, C15), C13),
-                        C11,
-                    ),
-                    C9,
-                ),
-                C7,
-            ),
-            C5,
-        ),
-        C3,
-    );
+    let mut p = C23;
+    p = fma_internal(z, p, C21);
+    p = fma_internal(z, p, C19);
+    p = fma_internal(z, p, C17);
+    p = fma_internal(z, p, C15);
+    p = fma_internal(z, p, C13);
+    p = fma_internal(z, p, C11);
+    p = fma_internal(z, p, C9);
+    p = fma_internal(z, p, C7);
+    p = fma_internal(z, p, C5);
+    p = fma_internal(z, p, C3);
     fma_internal(x * z, p, x)
 }
 
@@ -86,16 +80,11 @@ pub fn tanh(x: f64) -> f64 {
         if ax < SERIES_BOUND {
             return tanh_series(x);
         }
-        if ax < SMALL {
-            let s = sinh(x);
-            let c = cosh(x);
-            return s * recip_refine(c);
-        }
         if ax < MID {
-            let e = exp(2.0 * ax);
-            let (t_hi, t_lo) = sub_one_dd(e);
-            let d = e + 1.0;
-            let r = (t_hi + t_lo) * recip_refine(d);
+            let t = expm1(2.0 * ax);
+            let dh = t + 2.0;
+            let dl = 2.0 - (dh - t);
+            let r = div_dd(t, 0.0, dh, dl);
             return if x.is_sign_negative() { -r } else { r };
         }
         let t = expm1(2.0 * ax);

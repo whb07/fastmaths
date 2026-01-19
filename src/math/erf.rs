@@ -1,11 +1,9 @@
 //! erf/erfc implementation.
 //!
 //! Piecewise rational approximations for |x| in several ranges (small, medium,
-//! large). Uses exp_with_tail to preserve accuracy in erfc tails. Coefficients
+//! large). Uses compensated exp tails to preserve accuracy in erfc tails. Coefficients
 //! are fdlibm-derived minimax fits.
-
-use super::exp::exp_with_tail;
-use super::{f64_to_bits, hi_word, with_hi_lo};
+use super::{exp, expm1, f64_to_bits, hi_word, with_hi_lo};
 
 const ERX: f64 = 8.450_629_115_104_675_292_97e-01;
 const EFX8: f64 = 1.027_033_336_764_100_690_53e+00;
@@ -62,6 +60,7 @@ const SB4: f64 = 3.199_858_219_508_595_539_08e+03;
 const SB5: f64 = 2.553_050_406_433_164_425_83e+03;
 const SB6: f64 = 4.745_285_412_069_553_672_15e+02;
 const SB7: f64 = -2.244_095_244_658_581_833_62e+01;
+const SPLIT: f64 = 134_217_729.0; // 2^27 + 1
 
 #[inline(always)]
 fn fabs(x: f64) -> f64 {
@@ -74,79 +73,222 @@ fn fma(x: f64, y: f64, z: f64) -> f64 {
 }
 
 #[inline(always)]
+fn recip_refine(d: f64) -> f64 {
+    let r0 = 1.0 / d;
+    let err0 = fma(d, r0, -1.0);
+    let r1 = r0 - r0 * err0;
+    let err1 = fma(d, r1, -1.0);
+    r1 - r1 * err1
+}
+
+#[inline(always)]
+fn div_refine(n: f64, d: f64) -> f64 {
+    let r0 = n / d;
+    let p = d * r0;
+    let e = fma(d, r0, -p);
+    let rem = (n - p) - e;
+    r0 + rem / d
+}
+
+#[inline(always)]
+fn div_refine2(n: f64, d: f64) -> f64 {
+    let r0 = div_refine(n, d);
+    let p = d * r0;
+    let e = fma(d, r0, -p);
+    let rem = (n - p) - e;
+    r0 + rem / d
+}
+
+#[inline(always)]
+fn two_sum(a: f64, b: f64) -> (f64, f64) {
+    let s = a + b;
+    let bb = s - a;
+    let err = (a - (s - bb)) + (b - bb);
+    (s, err)
+}
+
+#[inline(always)]
+fn split(a: f64) -> (f64, f64) {
+    let t = SPLIT * a;
+    let hi = t - (t - a);
+    let lo = a - hi;
+    (hi, lo)
+}
+
+#[inline(always)]
+fn two_prod(a: f64, b: f64) -> (f64, f64) {
+    let p = a * b;
+    let (ah, al) = split(a);
+    let (bh, bl) = split(b);
+    let err = ((ah * bh - p) + ah * bl + al * bh) + al * bl;
+    (p, err)
+}
+
+#[inline(always)]
+fn dd_mul_scalar(ah: f64, al: f64, b: f64) -> (f64, f64) {
+    let (p, pe) = two_prod(ah, b);
+    let s = pe + al * b;
+    two_sum(p, s)
+}
+
+#[inline(always)]
+fn dd_add_scalar(ah: f64, al: f64, b: f64) -> (f64, f64) {
+    let (s, e) = two_sum(ah, b);
+    two_sum(s, e + al)
+}
+
+#[inline(always)]
+fn div_dd(nh: f64, nl: f64, dh: f64, dl: f64) -> f64 {
+    let r0 = nh / dh;
+    let p = dh * r0;
+    let e1 = fma(dh, r0, -p);
+    let rem = ((nh - p) - e1) + (nl - r0 * dl);
+    r0 + rem / dh
+}
+
+#[inline(always)]
+fn muldd2(xh: f64, xl: f64, ch: f64, cl: f64, l: &mut f64) -> f64 {
+    let ahhh = ch * xh;
+    *l = (ch * xl + cl * xh) + fma(ch, xh, -ahhh);
+    ahhh
+}
+
+#[inline(always)]
+fn exp_dd_parts(h: f64, l: f64) -> (f64, f64) {
+    let eh = exp(h);
+    if !eh.is_finite() || l == 0.0 {
+        return (eh, 0.0);
+    }
+    let em1 = expm1(l);
+    let ch = 1.0 + em1;
+    let cl = em1 - (ch - 1.0);
+    let mut pl = 0.0;
+    let ph = muldd2(eh, 0.0, ch, cl, &mut pl);
+    (ph, pl)
+}
+
+#[inline(always)]
 fn with_set_low_word(x: f64, low: u32) -> f64 {
     with_hi_lo(hi_word(x), low)
 }
 
 fn erfc1(x: f64) -> f64 {
     let s = fabs(x) - 1.0;
-    let mut p = PA6;
-    p = fma(s, p, PA5);
-    p = fma(s, p, PA4);
-    p = fma(s, p, PA3);
-    p = fma(s, p, PA2);
-    p = fma(s, p, PA1);
-    p = fma(s, p, PA0);
-    let mut q = QA6;
-    q = fma(s, q, QA5);
-    q = fma(s, q, QA4);
-    q = fma(s, q, QA3);
-    q = fma(s, q, QA2);
-    q = fma(s, q, QA1);
-    q = fma(s, q, 1.0);
-    1.0 - ERX - p / q
+    let (mut ph, mut pl) = (PA6, 0.0);
+    (ph, pl) = dd_mul_scalar(ph, pl, s);
+    (ph, pl) = dd_add_scalar(ph, pl, PA5);
+    (ph, pl) = dd_mul_scalar(ph, pl, s);
+    (ph, pl) = dd_add_scalar(ph, pl, PA4);
+    (ph, pl) = dd_mul_scalar(ph, pl, s);
+    (ph, pl) = dd_add_scalar(ph, pl, PA3);
+    (ph, pl) = dd_mul_scalar(ph, pl, s);
+    (ph, pl) = dd_add_scalar(ph, pl, PA2);
+    (ph, pl) = dd_mul_scalar(ph, pl, s);
+    (ph, pl) = dd_add_scalar(ph, pl, PA1);
+    (ph, pl) = dd_mul_scalar(ph, pl, s);
+    (ph, pl) = dd_add_scalar(ph, pl, PA0);
+    let (mut qh, mut ql) = (QA6, 0.0);
+    (qh, ql) = dd_mul_scalar(qh, ql, s);
+    (qh, ql) = dd_add_scalar(qh, ql, QA5);
+    (qh, ql) = dd_mul_scalar(qh, ql, s);
+    (qh, ql) = dd_add_scalar(qh, ql, QA4);
+    (qh, ql) = dd_mul_scalar(qh, ql, s);
+    (qh, ql) = dd_add_scalar(qh, ql, QA3);
+    (qh, ql) = dd_mul_scalar(qh, ql, s);
+    (qh, ql) = dd_add_scalar(qh, ql, QA2);
+    (qh, ql) = dd_mul_scalar(qh, ql, s);
+    (qh, ql) = dd_add_scalar(qh, ql, QA1);
+    (qh, ql) = dd_mul_scalar(qh, ql, s);
+    (qh, ql) = dd_add_scalar(qh, ql, 1.0);
+    let y = div_dd(ph, pl, qh, ql);
+    let t = 1.0 - ERX;
+    let r = t - y;
+    let err = (t - r) - y;
+    r + err
 }
 
 fn erfc2(ix: u32, mut x: f64) -> f64 {
-    if ix < 0x3ff4_0000 {
+    if ix < 0x3ff3_d70a {
         return erfc1(x);
     }
     x = fabs(x);
-    let s = 1.0 / (x * x);
-    let r = if ix < 0x4006_db6d {
-        let mut r = RA7;
-        r = fma(s, r, RA6);
-        r = fma(s, r, RA5);
-        r = fma(s, r, RA4);
-        r = fma(s, r, RA3);
-        r = fma(s, r, RA2);
-        r = fma(s, r, RA1);
-        fma(s, r, RA0)
+    let xx = x * x;
+    let s = recip_refine(xx);
+    let (rh, rl, sh, sl) = if ix < 0x4006_db6d {
+        let (mut rh, mut rl) = (RA7, 0.0);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RA6);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RA5);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RA4);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RA3);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RA2);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RA1);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RA0);
+
+        let (mut sh, mut sl) = (SA8, 0.0);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SA7);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SA6);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SA5);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SA4);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SA3);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SA2);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SA1);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, 1.0);
+        (rh, rl, sh, sl)
     } else {
-        let mut r = RB6;
-        r = fma(s, r, RB5);
-        r = fma(s, r, RB4);
-        r = fma(s, r, RB3);
-        r = fma(s, r, RB2);
-        r = fma(s, r, RB1);
-        fma(s, r, RB0)
-    };
-    let big_s = if ix < 0x4006_db6d {
-        let mut t = SA8;
-        t = fma(s, t, SA7);
-        t = fma(s, t, SA6);
-        t = fma(s, t, SA5);
-        t = fma(s, t, SA4);
-        t = fma(s, t, SA3);
-        t = fma(s, t, SA2);
-        t = fma(s, t, SA1);
-        fma(s, t, 1.0)
-    } else {
-        let mut t = SB7;
-        t = fma(s, t, SB6);
-        t = fma(s, t, SB5);
-        t = fma(s, t, SB4);
-        t = fma(s, t, SB3);
-        t = fma(s, t, SB2);
-        t = fma(s, t, SB1);
-        fma(s, t, 1.0)
+        let (mut rh, mut rl) = (RB6, 0.0);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RB5);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RB4);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RB3);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RB2);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RB1);
+        (rh, rl) = dd_mul_scalar(rh, rl, s);
+        (rh, rl) = dd_add_scalar(rh, rl, RB0);
+
+        let (mut sh, mut sl) = (SB7, 0.0);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SB6);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SB5);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SB4);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SB3);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SB2);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, SB1);
+        (sh, sl) = dd_mul_scalar(sh, sl, s);
+        (sh, sl) = dd_add_scalar(sh, sl, 1.0);
+        (rh, rl, sh, sl)
     };
     let z = with_set_low_word(x, 0);
     let base = fma(-z, z, -0.5625);
-    let tail = fma(z - x, z + x, r / big_s);
+    let r_div = div_dd(rh, rl, sh, sl);
+    let tail = fma(z - x, z + x, r_div);
     let sum = base + tail;
     let sum_tail = (base - sum) + tail;
-    exp_with_tail(sum, sum_tail) / x
+    let (eh, el) = exp_dd_parts(sum, sum_tail);
+    div_dd(eh, el, x, 0.0)
 }
 
 #[inline(always)]

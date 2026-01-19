@@ -5,7 +5,16 @@
 
 use super::{fma_internal, log1p};
 
-const SERIES_BOUND: f64 = 0.125;
+const SERIES_BOUND: f64 = 0.5;
+
+#[inline(always)]
+fn div_dd(nh: f64, nl: f64, dh: f64, dl: f64) -> f64 {
+    let r0 = nh / dh;
+    let p = dh * r0;
+    let e1 = fma_internal(dh, r0, -p);
+    let rem = ((nh - p) - e1) + (nl - r0 * dl);
+    r0 + rem / dh
+}
 
 #[inline(always)]
 pub fn atanh(x: f64) -> f64 {
@@ -32,37 +41,40 @@ pub fn atanh(x: f64) -> f64 {
         }
         if y < SERIES_BOUND {
             let z = y * y;
-            let p = fma_internal(
-                z,
-                fma_internal(
-                    z,
-                    fma_internal(
-                        z,
-                        fma_internal(
-                            z,
-                            fma_internal(
-                                z,
-                                fma_internal(
-                                    z,
-                                    fma_internal(z, fma_internal(z, 1.0 / 19.0, 1.0 / 17.0), 1.0 / 15.0),
-                                    1.0 / 13.0,
-                                ),
-                                1.0 / 11.0,
-                            ),
-                            1.0 / 9.0,
-                        ),
-                        1.0 / 7.0,
-                    ),
-                    1.0 / 5.0,
-                ),
-                1.0 / 3.0,
-            );
+            let mut p = 1.0 / 49.0;
+            p = fma_internal(z, p, 1.0 / 47.0);
+            p = fma_internal(z, p, 1.0 / 45.0);
+            p = fma_internal(z, p, 1.0 / 43.0);
+            p = fma_internal(z, p, 1.0 / 41.0);
+            p = fma_internal(z, p, 1.0 / 39.0);
+            p = fma_internal(z, p, 1.0 / 37.0);
+            p = fma_internal(z, p, 1.0 / 35.0);
+            p = fma_internal(z, p, 1.0 / 33.0);
+            p = fma_internal(z, p, 1.0 / 31.0);
+            p = fma_internal(z, p, 1.0 / 29.0);
+            p = fma_internal(z, p, 1.0 / 27.0);
+            p = fma_internal(z, p, 1.0 / 25.0);
+            p = fma_internal(z, p, 1.0 / 23.0);
+            p = fma_internal(z, p, 1.0 / 21.0);
+            p = fma_internal(z, p, 1.0 / 19.0);
+            p = fma_internal(z, p, 1.0 / 17.0);
+            p = fma_internal(z, p, 1.0 / 15.0);
+            p = fma_internal(z, p, 1.0 / 13.0);
+            p = fma_internal(z, p, 1.0 / 11.0);
+            p = fma_internal(z, p, 1.0 / 9.0);
+            p = fma_internal(z, p, 1.0 / 7.0);
+            p = fma_internal(z, p, 1.0 / 5.0);
+            p = fma_internal(z, p, 1.0 / 3.0);
             let r = fma_internal(y * z, p, y);
             return if sign { -r } else { r };
         }
-        y = 0.5 * log1p(2.0 * y + 2.0 * y * y / (1.0 - y));
+        let t = y + y;
+        let w = div_dd(t, 0.0, 1.0 - y, 0.0);
+        y = 0.5 * log1p(w);
     } else {
-        y = 0.5 * log1p(2.0 * (y / (1.0 - y)));
+        let t = y + y;
+        let w = div_dd(t, 0.0, 1.0 - y, 0.0);
+        y = 0.5 * log1p(w);
     }
 
     if sign { -y } else { y }

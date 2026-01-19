@@ -16,6 +16,7 @@ mod tests {
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, FRAC_PI_6, PI, TAU};
     use std::path::Path;
     use std::string::String;
+    #[cfg(not(feature = "mpfr"))]
     use std::sync::OnceLock;
     use std::vec;
     use std::vec::Vec;
@@ -2114,6 +2115,7 @@ mod tests {
         Some(path)
     }
 
+    #[cfg(not(feature = "mpfr"))]
     fn glibc_lib_any() -> Option<&'static Library> {
         static LIB: OnceLock<Option<Library>> = OnceLock::new();
         LIB.get_or_init(|| {
@@ -2139,6 +2141,7 @@ mod tests {
         .as_ref()
     }
 
+    #[cfg(not(feature = "mpfr"))]
     fn glibc_sym_f64(name: &'static [u8]) -> Option<unsafe extern "C" fn(f64) -> f64> {
         let lib = glibc_lib_any()?;
         unsafe {
@@ -2148,6 +2151,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "mpfr"))]
     fn glibc_sym_f64_f64(name: &'static [u8]) -> Option<unsafe extern "C" fn(f64, f64) -> f64> {
         let lib = glibc_lib_any()?;
         unsafe {
@@ -2157,6 +2161,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "mpfr"))]
     fn glibc_sym_i64(name: &'static [u8]) -> Option<unsafe extern "C" fn(f64) -> i64> {
         let lib = glibc_lib_any()?;
         unsafe {
