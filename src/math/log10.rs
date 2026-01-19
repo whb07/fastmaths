@@ -1,71 +1,80 @@
 //! log10(x) implementation.
 //!
-//! Computes log10 via ln(x) scaled by log10(e) with high/low constants. This
-//! mirrors glibc-style error-compensated scaling for ≤1 ULP accuracy.
+//! Port of glibc/fdlibm: argument reduction via ilogb and
+//! log10(x) = y*log10_2hi + (y*log10_2lo + ivln10*ln(mantissa)),
+//! using high/low splits for ≤1 ULP accuracy.
 
-use super::{fma_internal, ln, scalbn_internal};
+use super::{fma_internal, log1p, log::ln, log::ln_dd};
 
-const NEAR1_MIN: f64 = 0.75;
-const NEAR1_MAX: f64 = 1.5;
+const TWO54: f64 = f64::from_bits(0x4350_0000_0000_0000);
+const IVLN10: f64 = f64::from_bits(0x3fdb_cb7b_1526_e50e);
+const IVLN10_HI: f64 = f64::from_bits(0x3fdb_cb7b_1800_0000);
+const IVLN10_LO: f64 = f64::from_bits(0xbe26_c8d7_9000_0000);
+const LOG10_2_HI: f64 = f64::from_bits(0x3fd3_4413_509f_6000);
+const LOG10_2_LO: f64 = f64::from_bits(0x3d59_fef3_11f1_2b36);
 
-const LOG10_E_HI: f64 = 0.434_294_462_203_979_5;
-const LOG10_E_LO: f64 = 1.969_927_232_448_043_2e-08;
-const LOG10_E_FULL: f64 = 0.434_294_481_903_251_8;
-const LOG10_2_HI: f64 = 0.301_029_920_578_002_93;
-const LOG10_2_LO: f64 = 7.508_597_826_832_997e-08;
-
-#[inline]
-fn mul_log10_e(x: f64) -> f64 {
-    let hi = x * LOG10_E_HI;
-    let lo = fma_internal(x, LOG10_E_HI, -hi) + x * LOG10_E_LO;
-    hi + lo
+#[inline(always)]
+fn two_sum(a: f64, b: f64) -> (f64, f64) {
+    let s = a + b;
+    let bb = s - a;
+    let err = (a - (s - bb)) + (b - bb);
+    (s, err)
 }
 
 #[inline]
 pub fn log10(x: f64) -> f64 {
-    if x.is_nan() {
-        return f64::NAN;
-    }
-    if x == 0.0 {
+    let mut ux = x.to_bits();
+    let ax = ux & 0x7fff_ffff_ffff_ffff;
+    if ax == 0 {
         return f64::NEG_INFINITY;
     }
-    if x < 0.0 {
+    if (ux >> 63) != 0 {
         return f64::NAN;
     }
-    if x.is_infinite() {
-        return f64::INFINITY;
+    if ax >= 0x7ff0_0000_0000_0000 {
+        return x + x;
     }
 
     let r = x - 1.0;
-    if r.abs() <= 0.2 {
-        let t = -r;
-        let mut q = LOG10_E_FULL / 30.0;
-        for n in (1..30).rev() {
-            q = fma_internal(t, q, LOG10_E_FULL / (n as f64));
-        }
-        return r * q;
+    let ar = r.abs();
+    if ar <= 0.4 {
+        let (lnh, lnl) = if ar <= 0.125 {
+            (log1p(r), 0.0)
+        } else {
+            ln_dd(1.0 + r)
+        };
+        let p_hi = IVLN10_HI * lnh;
+        let p_lo = fma_internal(IVLN10_HI, lnh, -p_hi) + IVLN10_LO * lnh + IVLN10 * lnl;
+        let (s, e) = two_sum(p_hi, p_lo);
+        return s + e;
     }
 
-    if (NEAR1_MIN..NEAR1_MAX).contains(&x) {
-        return mul_log10_e(ln(x));
-    }
-
-    let mut ux = x.to_bits();
-    let mut exp = ((ux >> 52) & 0x7ff) as i32;
-    let mut k = exp - 1023;
-    if exp == 0 {
-        let y = scalbn_internal(x, 54);
+    let mut k: i32 = 0;
+    if ax < 0x0010_0000_0000_0000 {
+        k -= 54;
+        let y = x * TWO54;
         ux = y.to_bits();
-        exp = ((ux >> 52) & 0x7ff) as i32;
-        k = exp - 1023 - 54;
     }
 
-    let mant = f64::from_bits((ux & 0x000f_ffff_ffff_ffff) | 0x3ff0_0000_0000_0000);
-    let log10_m = mul_log10_e(ln(mant));
-    let kf = k as f64;
-    let hi = kf * LOG10_2_HI;
-    let lo = fma_internal(kf, LOG10_2_HI, -hi) + kf * LOG10_2_LO;
-    let sum = hi + log10_m;
-    let tail = (hi - sum) + log10_m + lo;
-    sum + tail
+    let exp = ((ux >> 52) & 0x7ff) as i32;
+    k += exp - 1023;
+    let i = if k < 0 { 1 } else { 0 };
+    let mant = (ux & 0x000f_ffff_ffff_ffff) | (((0x3ff - i) as u64) << 52);
+    let y = (k + i) as f64;
+    let m = f64::from_bits(mant);
+    let yhi = y * LOG10_2_HI;
+    let ylo = y * LOG10_2_LO;
+    if k <= -3 || k >= 3 {
+        let ln_m = ln(m);
+        return yhi + (ylo + IVLN10 * ln_m);
+    }
+    let (lnh, lnl) = if (-2..=2).contains(&k) {
+        ln_dd(m)
+    } else {
+        (ln(m), 0.0)
+    };
+    let p_hi = IVLN10_HI * lnh;
+    let p_lo = fma_internal(IVLN10_HI, lnh, -p_hi) + IVLN10_LO * lnh + IVLN10 * lnl;
+    let (s, e) = two_sum(yhi, p_hi);
+    s + (e + ylo + p_lo)
 }

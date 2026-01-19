@@ -4,7 +4,7 @@
 //! polynomial approximation on a small interval. Coefficients are fdlibm-derived
 //! minimax fits.
 
-use super::{fma_internal, hi_word};
+use super::hi_word;
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
 const ATANHI: [f64; 4] = [
@@ -34,6 +34,11 @@ const AT: [f64; 11] = [
     -3.653_157_274_421_691_552_70e-02,
     1.628_582_011_536_578_236_23e-02,
 ];
+
+#[inline(always)]
+fn mul_add_fast(a: f64, b: f64, c: f64) -> f64 {
+    a * b + c
+}
 
 #[inline]
 pub fn atan(x: f64) -> f64 {
@@ -77,24 +82,24 @@ pub fn atan(x: f64) -> f64 {
 
     let z = ax * ax;
     let w = z * z;
-    let s1 = z * fma_internal(
+    let s1 = z * mul_add_fast(
         w,
-        fma_internal(
+        mul_add_fast(
             w,
-            fma_internal(
+            mul_add_fast(
                 w,
-                fma_internal(w, fma_internal(w, AT[10], AT[8]), AT[6]),
+                mul_add_fast(w, mul_add_fast(w, AT[10], AT[8]), AT[6]),
                 AT[4],
             ),
             AT[2],
         ),
         AT[0],
     );
-    let s2 = w * fma_internal(
+    let s2 = w * mul_add_fast(
         w,
-        fma_internal(
+        mul_add_fast(
             w,
-            fma_internal(w, fma_internal(w, AT[9], AT[7]), AT[5]),
+            mul_add_fast(w, mul_add_fast(w, AT[9], AT[7]), AT[5]),
             AT[3],
         ),
         AT[1],
@@ -103,7 +108,7 @@ pub fn atan(x: f64) -> f64 {
     let res = if id < 0 {
         ax - ax * (s1 + s2)
     } else {
-        let t = fma_internal(ax, s1 + s2, -ATANLO[id as usize]);
+        let t = mul_add_fast(ax, s1 + s2, -ATANLO[id as usize]);
         ATANHI[id as usize] - (t - ax)
     };
 

@@ -560,7 +560,7 @@ const LOG_B9: f64 = f64::from_bits(0x3fb78182f7afd085);
 const LOG_B10: f64 = f64::from_bits(0xbfb5521375d145cd);
 
 #[inline(always)]
-pub fn ln(x: f64) -> f64 {
+pub(crate) fn ln_dd(x: f64) -> (f64, f64) {
     let mut ix = f64_to_bits(x);
     let top = (ix >> 48) as u32;
 
@@ -569,7 +569,7 @@ pub fn ln(x: f64) -> f64 {
 
     if ix.wrapping_sub(LO) < (HI - LO) {
         if ix == f64_to_bits(1.0) {
-            return 0.0;
+            return (0.0, 0.0);
         }
         let r = x - 1.0;
         let r2 = r * r;
@@ -589,7 +589,7 @@ pub fn ln(x: f64) -> f64 {
         let hi = r + w;
         let mut lo = r - hi + w;
         lo += LOG_B0 * rlo * (rhi + r);
-        return y + lo + hi;
+        return (hi, lo + y);
     }
 
     // Fast path for exact powers of two (positive normals only).
@@ -599,14 +599,14 @@ pub fn ln(x: f64) -> f64 {
         if mant == 0 && exp != 0 && exp != 0x7ff {
             let k = exp as i32 - 1023;
             let kd = k as f64;
-            return kd * LN2_HI + kd * LN2_LO;
+            return (kd * LN2_HI, kd * LN2_LO);
         }
     }
 
     if top.wrapping_sub(0x0010) >= 0x7ff0 - 0x0010 {
         let (ix2, special) = log_special(ix, x);
         if let Some(value) = special {
-            return value;
+            return (value, 0.0);
         }
         ix = ix2;
     }
@@ -635,7 +635,13 @@ pub fn ln(x: f64) -> f64 {
 
     let r2 = r * r;
     let poly = eval_poly(r, r2);
-    lo + poly + hi
+    (hi, lo + poly)
+}
+
+#[inline(always)]
+pub fn ln(x: f64) -> f64 {
+    let (hi, lo) = ln_dd(x);
+    hi + lo
 }
 
 #[inline(always)]

@@ -123,10 +123,26 @@ pub fn llrint(x: f64) -> i64 {
 
 #[inline(always)]
 pub fn lround(x: f64) -> i64 {
-    clamp_i64(round(x))
+    if !x.is_finite() {
+        return i64::MIN;
+    }
+    let ax = x.abs();
+    if ax >= TOINT {
+        return if ax > i64::MAX as f64 {
+            i64::MIN
+        } else {
+            x as i64
+        };
+    }
+    let y = x + copysign(0.5, x);
+    if y > i64::MAX as f64 || y < i64::MIN as f64 {
+        i64::MIN
+    } else {
+        y as i64
+    }
 }
 
 #[inline(always)]
 pub fn llround(x: f64) -> i64 {
-    clamp_i64(round(x))
+    lround(x)
 }

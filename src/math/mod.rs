@@ -23,6 +23,8 @@ mod copysign;
 mod cos;
 mod cosh;
 mod erf;
+mod erf_data;
+mod erfc_data;
 mod exp;
 mod exp10;
 mod exp2;

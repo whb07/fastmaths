@@ -1,81 +1,48 @@
 //! atanh(x) implementation.
 //!
-//! Uses log1p-based formulas: atanh(x)=0.5*log1p(2x/(1-x)) with a small-x
-//! series for accuracy near zero and proper handling near |x|=1.
+//! Uses log1p-difference for |x|<0.46 and a log-ratio formulation
+//! for larger |x| to achieve <=1 ULP accuracy.
 
-use super::{fma_internal, log1p};
+use super::{copysign, fma_internal, log1p, log::ln};
 
-const SERIES_BOUND: f64 = 0.5;
+const TINY_BITS: u64 = 0x3e4d_12ed_0af1_a27f;
+const LOG1P_BOUND: f64 = 0.47;
 
 #[inline(always)]
-fn div_dd(nh: f64, nl: f64, dh: f64, dl: f64) -> f64 {
-    let r0 = nh / dh;
-    let p = dh * r0;
-    let e1 = fma_internal(dh, r0, -p);
-    let rem = ((nh - p) - e1) + (nl - r0 * dl);
-    r0 + rem / dh
+fn fma(a: f64, b: f64, c: f64) -> f64 {
+    fma_internal(a, b, c)
 }
 
 #[inline(always)]
 pub fn atanh(x: f64) -> f64 {
-    let ux = x.to_bits();
-    let e = ((ux >> 52) & 0x7ff) as i32;
-    let sign = (ux >> 63) != 0;
-    let mut y = f64::from_bits(ux & 0x7fff_ffff_ffff_ffffu64);
-
-    if y >= 1.0 {
-        return if y == 1.0 {
-            if sign {
+    let ax = x.abs();
+    let aix = ax.to_bits();
+    if aix >= 0x3ff0_0000_0000_0000u64 {
+        if aix == 0x3ff0_0000_0000_0000u64 {
+            return if x.is_sign_negative() {
                 f64::NEG_INFINITY
             } else {
                 f64::INFINITY
-            }
-        } else {
-            f64::NAN
-        };
+            };
+        }
+        if aix > 0x7ff0_0000_0000_0000u64 {
+            return x + x;
+        }
+        return f64::NAN;
     }
 
-    if e < 0x3ff - 1 {
-        if e < 0x3ff - 32 {
-            return x;
-        }
-        if y < SERIES_BOUND {
-            let z = y * y;
-            let mut p = 1.0 / 49.0;
-            p = fma_internal(z, p, 1.0 / 47.0);
-            p = fma_internal(z, p, 1.0 / 45.0);
-            p = fma_internal(z, p, 1.0 / 43.0);
-            p = fma_internal(z, p, 1.0 / 41.0);
-            p = fma_internal(z, p, 1.0 / 39.0);
-            p = fma_internal(z, p, 1.0 / 37.0);
-            p = fma_internal(z, p, 1.0 / 35.0);
-            p = fma_internal(z, p, 1.0 / 33.0);
-            p = fma_internal(z, p, 1.0 / 31.0);
-            p = fma_internal(z, p, 1.0 / 29.0);
-            p = fma_internal(z, p, 1.0 / 27.0);
-            p = fma_internal(z, p, 1.0 / 25.0);
-            p = fma_internal(z, p, 1.0 / 23.0);
-            p = fma_internal(z, p, 1.0 / 21.0);
-            p = fma_internal(z, p, 1.0 / 19.0);
-            p = fma_internal(z, p, 1.0 / 17.0);
-            p = fma_internal(z, p, 1.0 / 15.0);
-            p = fma_internal(z, p, 1.0 / 13.0);
-            p = fma_internal(z, p, 1.0 / 11.0);
-            p = fma_internal(z, p, 1.0 / 9.0);
-            p = fma_internal(z, p, 1.0 / 7.0);
-            p = fma_internal(z, p, 1.0 / 5.0);
-            p = fma_internal(z, p, 1.0 / 3.0);
-            let r = fma_internal(y * z, p, y);
-            return if sign { -r } else { r };
-        }
-        let t = y + y;
-        let w = div_dd(t, 0.0, 1.0 - y, 0.0);
-        y = 0.5 * log1p(w);
-    } else {
-        let t = y + y;
-        let w = div_dd(t, 0.0, 1.0 - y, 0.0);
-        y = 0.5 * log1p(w);
+    if aix < TINY_BITS {
+        return fma(x, f64::from_bits(0x3c80000000000000), x);
     }
 
-    if sign { -y } else { y }
+    if ax <= LOG1P_BOUND {
+        let y = 0.5 * (log1p(ax) - log1p(-ax));
+        return copysign(y, x);
+    }
+
+    let num = 1.0 + ax;
+    let den = 1.0 - ax;
+    let ratio = num / den;
+    let y = 0.5 * ln(ratio);
+    copysign(y, x)
 }

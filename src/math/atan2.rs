@@ -3,13 +3,30 @@
 //! Handles quadrants, signed zeros, and infinities explicitly, then reduces to
 //! atan(y/x) using the atan polynomial core. Matches glibc sign/edge behavior.
 
-use super::atan;
+use super::{atan, fma_internal};
 
 const PI: f64 = core::f64::consts::PI;
 const PI_LO: f64 = 1.224_646_799_147_353_207_2e-16;
 const PIO2_HI: f64 = core::f64::consts::FRAC_PI_2;
 const PIO4: f64 = core::f64::consts::FRAC_PI_4;
 const PIO2_LO: f64 = 6.123_233_995_736_766_035_87e-17;
+
+#[inline(always)]
+fn div_hi_lo(n: f64, d: f64) -> (f64, f64) {
+    let r0 = n / d;
+    let err = fma_internal(-r0, d, n);
+    (r0, err / d)
+}
+
+#[inline(always)]
+fn atan_with_correction(r: f64, r_lo: f64) -> f64 {
+    let z = atan(r);
+    if r_lo == 0.0 {
+        return z;
+    }
+    let denom = 1.0 + r * r;
+    z + r_lo / denom
+}
 
 #[inline]
 pub fn atan2(y: f64, x: f64) -> f64 {
@@ -66,10 +83,12 @@ pub fn atan2(y: f64, x: f64) -> f64 {
     }
 
     if x.is_sign_positive() {
-        return atan(y / x);
+        let (r, r_lo) = div_hi_lo(y, x);
+        return atan_with_correction(r, r_lo);
     }
 
-    let z = atan(y / x);
+    let (r, r_lo) = div_hi_lo(y, x);
+    let z = atan_with_correction(r, r_lo);
     if y.is_sign_negative() {
         (z - PI_LO) - PI
     } else {

@@ -3,7 +3,7 @@
 //! Uses expm1(2|x|) to compute tanh with reduced cancellation for |x|<1, and
 //! saturates to ±1 for large inputs.
 
-use super::{expm1, fma_internal};
+use super::{exp, expm1, fma_internal};
 
 const TINY: f64 = 2.775_557_561_562_891_4e-17; // 2^-55
 const SERIES_BOUND: f64 = 0.3;
@@ -14,21 +14,10 @@ const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;
 const EXP_MASK: u64 = 0x7ff0_0000_0000_0000u64;
 
 #[inline(always)]
-fn recip_refine(d: f64) -> f64 {
-    let r0 = 1.0 / d;
-    let err0 = fma_internal(d, r0, -1.0);
-    let r1 = r0 - r0 * err0;
-    let err1 = fma_internal(d, r1, -1.0);
-    r1 - r1 * err1
-}
-
-#[inline(always)]
-fn div_dd(nh: f64, nl: f64, dh: f64, dl: f64) -> f64 {
-    let r0 = nh / dh;
-    let p = dh * r0;
-    let e1 = fma_internal(dh, r0, -p);
-    let rem = ((nh - p) - e1) + (nl - r0 * dl);
-    r0 + rem / dh
+fn div_refine(n: f64, d: f64) -> f64 {
+    let r0 = n / d;
+    let err = fma_internal(-r0, d, n);
+    r0 + err / d
 }
 
 #[inline(always)]
@@ -82,14 +71,13 @@ pub fn tanh(x: f64) -> f64 {
         }
         if ax < MID {
             let t = expm1(2.0 * ax);
-            let dh = t + 2.0;
-            let dl = 2.0 - (dh - t);
-            let r = div_dd(t, 0.0, dh, dl);
+            let d = t + 2.0;
+            let r = div_refine(t, d);
             return if x.is_sign_negative() { -r } else { r };
         }
-        let t = expm1(2.0 * ax);
-        let d = t + 2.0;
-        let r = 1.0 - 2.0 * recip_refine(d);
+        let t = exp(2.0 * ax);
+        let d = t + 1.0;
+        let r = 1.0 - 2.0 * div_refine(1.0, d);
         return if x.is_sign_negative() { -r } else { r };
     }
     let r = 1.0 - TINY_INEXACT;
