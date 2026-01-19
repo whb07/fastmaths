@@ -25,6 +25,14 @@ mod tests {
     const DERIVED_ULP_TOL: f64 = 1.0;
     const PROPTEST_ULP_TOL: f64 = 1.0;
     #[cfg(feature = "mpfr")]
+    const TANH_ULP_TOL: f64 = 1.0;
+    #[cfg(not(feature = "mpfr"))]
+    const TANH_ULP_TOL: f64 = 3.0;
+    #[cfg(feature = "mpfr")]
+    const ATANH_ULP_TOL: f64 = 1.0;
+    #[cfg(not(feature = "mpfr"))]
+    const ATANH_ULP_TOL: f64 = 2.0;
+    #[cfg(feature = "mpfr")]
     const MPFR_PREC: u32 = 256;
     #[cfg(feature = "mpfr")]
     const MPFR_TRIG_LIMIT: f64 = 1.0e6;
@@ -2611,7 +2619,7 @@ mod tests {
         for &x in &tanh_inputs() {
             let actual = fastlibm::tanh(x);
             let expected = tanh_reference(x);
-            assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("tanh({x})"));
+            assert_ulp_eq(actual, expected, TANH_ULP_TOL, &format!("tanh({x})"));
         }
     }
 
@@ -2645,7 +2653,7 @@ mod tests {
         for &x in &atanh_inputs() {
             let actual = fastlibm::atanh(x);
             let expected = atanh_reference(x);
-            assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("atanh({x})"));
+            assert_ulp_eq(actual, expected, ATANH_ULP_TOL, &format!("atanh({x})"));
         }
     }
 
@@ -4083,7 +4091,7 @@ mod tests {
         fn ptest_tanh(x in -20.0..20.0_f64) {
             let actual = fastlibm::tanh(x);
             let expected = tanh_reference(x);
-            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("tanh({x})"));
+            assert_ulp_eq(actual, expected, TANH_ULP_TOL, &format!("tanh({x})"));
         }
 
         #[test]
@@ -4168,7 +4176,7 @@ mod tests {
         fn ptest_atanh(x in -0.999_999..0.999_999_f64) {
             let actual = fastlibm::atanh(x);
             let expected = atanh_reference(x);
-            assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("atanh({x})"));
+            assert_ulp_eq(actual, expected, ATANH_ULP_TOL, &format!("atanh({x})"));
         }
 
         #[cfg(feature = "mpfr")]

@@ -216,10 +216,12 @@ pub fn erfc(x: f64) -> f64 {
         s = fma(z, s, QQ1);
         s = fma(z, s, 1.0);
         let y = r / s;
+        let t = fma(x, y, x);
+        let t_err = fma(x, y, x - t);
         if sign != 0 || ix < 0x3fd0_0000 {
-            return 1.0 - (x + x * y);
+            return (1.0 - t) - t_err;
         }
-        return 0.5 - (x - 0.5 + x * y);
+        return (0.5 - (t - 0.5)) - t_err;
     }
 
     if ix < 0x403c_0000 {

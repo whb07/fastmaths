@@ -5,11 +5,8 @@
 //! error below 1 ULP in difficult regions. Constants and tables are sourced from
 //! glibc/core-math (see glibc/ directory).
 
-#[cfg(not(all(test, feature = "mpfr")))]
-use super::exp;
+use super::{exp, expm1};
 use super::{floor, rint};
-#[cfg(all(test, feature = "mpfr"))]
-use rug::Float;
 
 #[inline(always)]
 fn fma(a: f64, b: f64, c: f64) -> f64 {
@@ -4816,37 +4813,26 @@ fn copysign(x: f64, y: f64) -> f64 {
 }
 
 #[inline(always)]
-#[cfg(not(all(test, feature = "mpfr")))]
 fn exp_dd_parts(h: f64, l: f64) -> (f64, f64) {
     let eh = exp(h);
     if !eh.is_finite() || l == 0.0 {
         return (eh, 0.0);
     }
-    let t = l;
-    let t2 = t * t;
-    let t3 = t2 * t;
-    let t4 = t2 * t2;
-    let t5 = t4 * t;
-    let mut cl = 0.0;
-    let mut ch = fasttwosum(1.0, t, &mut cl);
-    ch = sumdd(ch, cl, 0.5 * t2, 0.0, &mut cl);
-    ch = sumdd(ch, cl, t3 / 6.0, 0.0, &mut cl);
-    ch = sumdd(ch, cl, t4 / 24.0, 0.0, &mut cl);
-    ch = sumdd(ch, cl, t5 / 120.0, 0.0, &mut cl);
+    let em1 = expm1(l);
+    let ch = 1.0 + em1;
+    let cl = em1 - (ch - 1.0);
     let mut pl = 0.0;
     let ph = muldd2(eh, 0.0, ch, cl, &mut pl);
     (ph, pl)
 }
 
 #[inline(always)]
-#[cfg(not(all(test, feature = "mpfr")))]
 fn exp_dd(h: f64, l: f64) -> f64 {
     let (ph, pl) = exp_dd_parts(h, l);
     ph + pl
 }
 
 #[inline(always)]
-#[cfg(not(all(test, feature = "mpfr")))]
 fn sinpi_parts(x: f64, sl: &mut f64) -> f64 {
     let k = floor(x);
     let phi = x - k;
@@ -4859,7 +4845,6 @@ fn sinpi_parts(x: f64, sl: &mut f64) -> f64 {
 }
 
 #[inline(always)]
-#[cfg(not(all(test, feature = "mpfr")))]
 fn tgamma_half(x: f64) -> f64 {
     let n = rint(x - 0.5) as i32;
     let mut y = f64::from_bits(0x3ffc5bf891b4ef6a); // sqrt(pi)
@@ -4876,8 +4861,13 @@ fn tgamma_half(x: f64) -> f64 {
 }
 
 #[inline(always)]
-#[cfg(not(all(test, feature = "mpfr")))]
 fn tgamma_quarter(x: f64, frac: f64) -> f64 {
+    let (hi, lo) = tgamma_quarter_dd(x, frac);
+    hi + lo
+}
+
+#[inline(always)]
+fn tgamma_quarter_dd(x: f64, frac: f64) -> (f64, f64) {
     let base = if frac == 0.25 { 0.25 } else { 0.75 };
     let (mut hi, mut lo) = if frac == 0.25 {
         (
@@ -4907,7 +4897,7 @@ fn tgamma_quarter(x: f64, frac: f64) -> f64 {
             lo = l;
         }
     }
-    hi + lo
+    (hi, lo)
 }
 
 #[inline(always)]
@@ -5522,18 +5512,6 @@ pub fn lgamma(x: f64) -> f64 {
     ieee754_lgamma_r(x, &mut sign)
 }
 
-#[cfg(all(test, feature = "mpfr"))]
-#[inline(always)]
-pub fn tgamma(x: f64) -> f64 {
-    if x == 0.5 {
-        return f64::from_bits(0x3ffc5bf891b4ef6a);
-    }
-    let mut v = Float::with_val(256, x);
-    v.gamma_mut();
-    v.to_f64()
-}
-
-#[cfg(not(all(test, feature = "mpfr")))]
 #[inline(always)]
 pub fn tgamma(x: f64) -> f64 {
     if x.is_nan() {
@@ -5565,29 +5543,47 @@ pub fn tgamma(x: f64) -> f64 {
         return tgamma_quarter(x, frac);
     }
     if x < 0.0 {
+        let frac = x - floor(x);
+        if frac == 0.25 || frac == 0.5 || frac == 0.75 {
+            let mut sl = 0.0;
+            let sh = sinpi_parts(x, &mut sl);
+            let (yh, yl) = tgamma_pos_dd(1.0 - x);
+            let mut pl = 0.0;
+            let ph = muldd2(sh, sl, yh, yl, &mut pl);
+            let mut r = 1.0 / ph;
+            let mut e = fma(ph, r, -1.0) + pl * r;
+            r -= r * e;
+            e = fma(ph, r, -1.0) + pl * r;
+            r -= r * e;
+            return r;
+        }
         let mut sl = 0.0;
         let sh = sinpi_parts(x, &mut sl);
-        let (yh, yl) = tgamma_pos_dd(1.0 - x);
-        let p = sh * yh;
-        let ep = (fma(sh, yh, -p) + sl * yh) + sh * yl;
-        let inv = 1.0 / p;
-        return inv * (1.0 - ep * inv);
+        let sign = if sh.is_sign_negative() { -1.0 } else { 1.0 };
+        let (lh, ll) = as_lgamma_accurate_dd(x);
+        let (yh, yl) = exp_dd_parts(lh, ll);
+        let y = yh + yl;
+        return if sign < 0.0 { -y } else { y };
     }
     tgamma_pos(x)
 }
 
 #[inline(never)]
-#[cfg(not(all(test, feature = "mpfr")))]
 fn tgamma_pos(x: f64) -> f64 {
     let (yh, yl) = tgamma_pos_dd(x);
     yh + yl
 }
 
 #[inline(never)]
-#[cfg(not(all(test, feature = "mpfr")))]
 fn tgamma_pos_dd(x: f64) -> (f64, f64) {
-    if x < 64.0 && (x - floor(x)) == 0.5 {
-        return (tgamma_half(x), 0.0);
+    if x < 64.0 {
+        let frac = x - floor(x);
+        if frac == 0.5 {
+            return (tgamma_half(x), 0.0);
+        }
+        if frac == 0.25 || frac == 0.75 {
+            return tgamma_quarter_dd(x, frac);
+        }
     }
     if x == floor(x) {
         let n = x as i32;

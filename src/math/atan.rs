@@ -4,7 +4,7 @@
 //! polynomial approximation on a small interval. Coefficients are fdlibm-derived
 //! minimax fits.
 
-use super::hi_word;
+use super::{fma_internal, hi_word};
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
 const ATANHI: [f64; 4] = [
@@ -51,14 +51,13 @@ pub fn atan(x: f64) -> f64 {
         };
     }
 
+    if ix < 0x3e40_0000 {
+        return x;
+    }
+
     let mut id: i32 = -1;
-    let mut ax = x;
-    if ix < 0x3fdc_0000 {
-        if ix < 0x3e40_0000 {
-            return x;
-        }
-    } else {
-        ax = x.abs();
+    let mut ax = x.abs();
+    if ix >= 0x3fdc_0000 {
         if ix < 0x3ff3_0000 {
             if ix < 0x3fe6_0000 {
                 id = 0;
@@ -78,13 +77,34 @@ pub fn atan(x: f64) -> f64 {
 
     let z = ax * ax;
     let w = z * z;
-    let s1 = z * (AT[0] + w * (AT[2] + w * (AT[4] + w * (AT[6] + w * (AT[8] + w * AT[10])))));
-    let s2 = w * (AT[1] + w * (AT[3] + w * (AT[5] + w * (AT[7] + w * AT[9]))));
+    let s1 = z * fma_internal(
+        w,
+        fma_internal(
+            w,
+            fma_internal(
+                w,
+                fma_internal(w, fma_internal(w, AT[10], AT[8]), AT[6]),
+                AT[4],
+            ),
+            AT[2],
+        ),
+        AT[0],
+    );
+    let s2 = w * fma_internal(
+        w,
+        fma_internal(
+            w,
+            fma_internal(w, fma_internal(w, AT[9], AT[7]), AT[5]),
+            AT[3],
+        ),
+        AT[1],
+    );
 
     let res = if id < 0 {
         ax - ax * (s1 + s2)
     } else {
-        ATANHI[id as usize] - ((ax * (s1 + s2) - ATANLO[id as usize]) - ax)
+        let t = fma_internal(ax, s1 + s2, -ATANLO[id as usize]);
+        ATANHI[id as usize] - (t - ax)
     };
 
     if hx < 0 { -res } else { res }

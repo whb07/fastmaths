@@ -4,7 +4,7 @@
 //! switches to exp(x)-1 for larger magnitudes. Polynomial degree and constants
 //! match fdlibm/glibc style minimax fits.
 
-use super::{hi_word, lo_word, with_hi_lo};
+use super::{fma_internal, hi_word, lo_word, with_hi_lo};
 
 const ONE: f64 = 1.0;
 const HUGE: f64 = 1.0e300;
@@ -77,13 +77,14 @@ fn expm1_generic(mut x: f64) -> f64 {
 
     let hfx = 0.5 * x;
     let hxs = x * hfx;
-    let r1 = ONE + hxs * Q[1];
+    let r1 = fma_internal(hxs, Q[1], ONE);
     let h2 = hxs * hxs;
-    let r2 = Q[2] + hxs * Q[3];
+    let r2 = fma_internal(hxs, Q[3], Q[2]);
     let h4 = h2 * h2;
-    let r3 = Q[4] + hxs * Q[5];
-    let r1 = r1 + h2 * r2 + h4 * r3;
-    let t = 3.0 - r1 * hfx;
+    let r3 = fma_internal(hxs, Q[5], Q[4]);
+    let r1 = fma_internal(h2, r2, r1);
+    let r1 = fma_internal(h4, r3, r1);
+    let t = fma_internal(r1, -hfx, 3.0);
     let mut e = hxs * ((r1 - t) / (6.0 - x * t));
 
     if k == 0 {
