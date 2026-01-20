@@ -2532,6 +2532,14 @@ mod tests {
     }
 
     #[test]
+    fn log10_regression_case_seed() {
+        let x = 1.017_091_338_276_825_4_f64;
+        let actual = fastlibm::log10(x);
+        let expected = log10_reference(x);
+        assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("log10({x})"));
+    }
+
+    #[test]
     fn tan_special_cases() {
         assert!(fastlibm::tan(f64::NAN).is_nan());
         assert!(fastlibm::tan(f64::INFINITY).is_nan());
