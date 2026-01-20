@@ -38,7 +38,7 @@ pub fn log10(x: f64) -> f64 {
     let r = x - 1.0;
     let ar = r.abs();
     if ar <= 0.4 {
-        let (lnh, lnl) = if ar <= 0.125 {
+        let (lnh, lnl) = if ar <= 0.03125 {
             (log1p(r), 0.0)
         } else {
             ln_dd(1.0 + r)
@@ -64,11 +64,7 @@ pub fn log10(x: f64) -> f64 {
     let m = f64::from_bits(mant);
     let yhi = y * LOG10_2_HI;
     let ylo = y * LOG10_2_LO;
-    if k <= -3 || k >= 3 {
-        let ln_m = ln(m);
-        return yhi + (ylo + IVLN10 * ln_m);
-    }
-    let (lnh, lnl) = if (-2..=2).contains(&k) {
+    let (lnh, lnl) = if k == -1 || k == 0 {
         ln_dd(m)
     } else {
         (ln(m), 0.0)
