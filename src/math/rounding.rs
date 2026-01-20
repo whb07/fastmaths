@@ -96,15 +96,10 @@ pub fn nearbyint(x: f64) -> f64 {
 
 #[inline(always)]
 fn clamp_i64(x: f64) -> i64 {
-    if x.is_nan() {
-        return i64::MIN;
-    }
     if !x.is_finite() {
         return i64::MIN;
     }
-    if x > i64::MAX as f64 {
-        i64::MIN
-    } else if x < i64::MIN as f64 {
+    if x > i64::MAX as f64 || x < i64::MIN as f64 {
         i64::MIN
     } else {
         x as i64

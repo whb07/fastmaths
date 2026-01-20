@@ -399,9 +399,9 @@ fn erfc_asympt_fast(h: &mut f64, l: &mut f64, x: f64) -> f64 {
     let mut zl = 0.0;
     fast_two_sum(&mut zh, &mut zl, p[9], *h);
     zl += *l;
-    for j in (3..=15).rev().step_by(2) {
+    for j in (3usize..=15).rev().step_by(2) {
         d_mul(h, l, zh, zl, uh, ul);
-        fast_two_sum(&mut zh, &mut zl, p[(j + 1) / 2], *h);
+        fast_two_sum(&mut zh, &mut zl, p[j.div_ceil(2)], *h);
         zl += *l;
     }
     d_mul(h, l, zh, zl, uh, ul);
@@ -422,7 +422,7 @@ fn cr_erfc_fast(h: &mut f64, l: &mut f64, x: f64) -> f64 {
         err *= *h;
         let mut t = 0.0;
         fast_two_sum(h, &mut t, 1.0, *h);
-        *l = t + *l;
+        *l += t;
         return err + f64::from_bits(0x3994000000000000);
     }
     const THRESHOLD1: f64 = f64::from_bits(0x400713786d9c7c09);
@@ -542,7 +542,7 @@ fn cr_erfc_accurate(x: f64) -> f64 {
         cr_erf_accurate(&mut h, &mut l, -x);
         let h0 = h;
         fast_two_sum(&mut h, &mut t, 1.0, h0);
-        l = t + l;
+        l += t;
         return h + l;
     }
     if x <= f64::from_bits(0x3ffb59ffb450828c) {

@@ -17,6 +17,7 @@ mod asinh;
 mod atan;
 mod atan2;
 mod atanh;
+mod atanh_data;
 mod cbrt;
 mod classify;
 mod copysign;

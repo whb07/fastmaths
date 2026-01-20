@@ -187,15 +187,10 @@ mod tests {
     }
 
     fn clamp_f64_to_i64(x: f64) -> i64 {
-        if x.is_nan() {
-            return i64::MIN;
-        }
         if !x.is_finite() {
             return i64::MIN;
         }
-        if x > i64::MAX as f64 {
-            i64::MIN
-        } else if x < i64::MIN as f64 {
+        if x > i64::MAX as f64 || x < i64::MIN as f64 {
             i64::MIN
         } else {
             x as i64
@@ -2641,6 +2636,14 @@ mod tests {
         assert!(fastlibm::acosh(0.5).is_nan());
         assert!(fastlibm::atanh(1.0).is_infinite());
         assert!(fastlibm::atanh(-1.0).is_infinite());
+    }
+
+    #[test]
+    fn atanh_regression_case_seed() {
+        let x = -0.4789704365236613_f64;
+        let actual = fastlibm::atanh(x);
+        let expected = atanh_reference(x);
+        assert_ulp_eq(actual, expected, ATANH_ULP_TOL, &format!("atanh({x})"));
     }
 
     #[test]

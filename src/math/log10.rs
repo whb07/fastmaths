@@ -4,7 +4,7 @@
 //! log10(x) = y*log10_2hi + (y*log10_2lo + ivln10*ln(mantissa)),
 //! using high/low splits for ≤1 ULP accuracy.
 
-use super::{fma_internal, log1p, log::ln, log::ln_dd};
+use super::{fma_internal, log::ln, log::ln_dd, log1p};
 
 const TWO54: f64 = f64::from_bits(0x4350_0000_0000_0000);
 const IVLN10: f64 = f64::from_bits(0x3fdb_cb7b_1526_e50e);
