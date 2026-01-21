@@ -4081,7 +4081,7 @@ mod tests {
         .boxed()
     }
 
-    fn exp_inputs() -> BoxedStrategy<f64> {
+    fn ptest_exp_inputs() -> BoxedStrategy<f64> {
         let wide = -745.0..709.78_f64;
         let mid = -50.0..50.0_f64;
         prop_oneof![
@@ -4094,7 +4094,7 @@ mod tests {
         .boxed()
     }
 
-    fn exp2_inputs() -> BoxedStrategy<f64> {
+    fn ptest_exp2_inputs() -> BoxedStrategy<f64> {
         let wide = -1074.0..1024.0_f64;
         let mid = -20.0..20.0_f64;
         prop_oneof![
@@ -4107,7 +4107,7 @@ mod tests {
         .boxed()
     }
 
-    fn expm1_inputs() -> BoxedStrategy<f64> {
+    fn ptest_expm1_inputs() -> BoxedStrategy<f64> {
         let mid = -50.0..50.0_f64;
         prop_oneof![
             5 => mid,
@@ -4118,7 +4118,7 @@ mod tests {
         .boxed()
     }
 
-    fn exp10_inputs() -> BoxedStrategy<f64> {
+    fn ptest_exp10_inputs() -> BoxedStrategy<f64> {
         let wide = -308.0..308.0_f64;
         let mid = -10.0..10.0_f64;
         prop_oneof![
@@ -4131,7 +4131,7 @@ mod tests {
         .boxed()
     }
 
-    fn ln_inputs() -> BoxedStrategy<f64> {
+    fn ptest_ln_inputs() -> BoxedStrategy<f64> {
         prop_oneof![
             2 => subnormal_pos_f64(),
             3 => tiny_positive(),
@@ -4143,7 +4143,7 @@ mod tests {
         .boxed()
     }
 
-    fn log2_inputs() -> BoxedStrategy<f64> {
+    fn ptest_log2_inputs() -> BoxedStrategy<f64> {
         prop_oneof![
             2 => subnormal_pos_f64(),
             3 => tiny_positive(),
@@ -4154,7 +4154,7 @@ mod tests {
         .boxed()
     }
 
-    fn log10_inputs() -> BoxedStrategy<f64> {
+    fn ptest_log10_inputs() -> BoxedStrategy<f64> {
         prop_oneof![
             2 => subnormal_pos_f64(),
             3 => tiny_positive(),
@@ -4165,7 +4165,7 @@ mod tests {
         .boxed()
     }
 
-    fn log1p_inputs() -> BoxedStrategy<f64> {
+    fn ptest_log1p_inputs() -> BoxedStrategy<f64> {
         let mid = -0.9..0.9_f64;
         prop_oneof![
             4 => mid,
@@ -4177,7 +4177,7 @@ mod tests {
         .boxed()
     }
 
-    fn trig_inputs() -> BoxedStrategy<f64> {
+    fn ptest_trig_inputs() -> BoxedStrategy<f64> {
         let mid = -1.0e6..1.0e6_f64;
         let large = -1.0e20..1.0e20_f64;
         let near_half_pi = (
@@ -4200,7 +4200,7 @@ mod tests {
         .boxed()
     }
 
-    fn tan_inputs() -> BoxedStrategy<f64> {
+    fn ptest_tan_inputs() -> BoxedStrategy<f64> {
         let mid = -1.0e6..1.0e6_f64;
         let near_singular = (
             -300_000i32..=300_000i32,
@@ -4222,7 +4222,7 @@ mod tests {
         .boxed()
     }
 
-    fn atan_inputs() -> BoxedStrategy<f64> {
+    fn ptest_atan_inputs() -> BoxedStrategy<f64> {
         prop_oneof![
             5 => -1.0e6..1.0e6_f64,
             2 => tiny_signed(),
@@ -4244,7 +4244,7 @@ mod tests {
         .boxed()
     }
 
-    fn atan2_inputs() -> BoxedStrategy<(f64, f64)> {
+    fn ptest_atan2_inputs() -> BoxedStrategy<(f64, f64)> {
         let mid = (-1.0e6..1.0e6_f64, -1.0e6..1.0e6_f64);
         let axes = prop_oneof![
             1 => (tiny_signed(), Just(0.0)),
@@ -4275,23 +4275,23 @@ mod tests {
         .boxed()
     }
 
-    fn hypot_inputs() -> BoxedStrategy<(f64, f64)> {
+    fn ptest_hypot_inputs() -> BoxedStrategy<(f64, f64)> {
         (hypot_arg_inputs(), hypot_arg_inputs()).boxed()
     }
 
-    fn sinh_inputs() -> BoxedStrategy<f64> {
+    fn ptest_sinh_inputs() -> BoxedStrategy<f64> {
         range_with_edges(-100.0, 100.0)
     }
 
-    fn cosh_inputs() -> BoxedStrategy<f64> {
+    fn ptest_cosh_inputs() -> BoxedStrategy<f64> {
         range_with_edges(-100.0, 100.0)
     }
 
-    fn tanh_inputs() -> BoxedStrategy<f64> {
+    fn ptest_tanh_inputs() -> BoxedStrategy<f64> {
         range_with_edges(-20.0, 20.0)
     }
 
-    fn pow_inputs() -> BoxedStrategy<(f64, f64)> {
+    fn ptest_pow_inputs() -> BoxedStrategy<(f64, f64)> {
         let base = prop_oneof![
             4 => -10.0..10.0_f64,
             2 => tiny_signed(),
@@ -4309,11 +4309,11 @@ mod tests {
         (base, exp).boxed()
     }
 
-    fn sqrt_inputs() -> BoxedStrategy<f64> {
+    fn ptest_sqrt_inputs() -> BoxedStrategy<f64> {
         range_with_edges(-1.0e300, 1.0e300)
     }
 
-    fn cbrt_inputs() -> BoxedStrategy<f64> {
+    fn ptest_cbrt_inputs() -> BoxedStrategy<f64> {
         range_with_edges(-1.0e300, 1.0e300)
     }
 
@@ -4327,15 +4327,15 @@ mod tests {
         .boxed()
     }
 
-    fn fmod_inputs() -> BoxedStrategy<(f64, f64)> {
+    fn ptest_fmod_inputs() -> BoxedStrategy<(f64, f64)> {
         (range_with_edges(-1.0e6, 1.0e6), nonzero_divisor_inputs()).boxed()
     }
 
-    fn remainder_inputs() -> BoxedStrategy<(f64, f64)> {
+    fn ptest_remainder_inputs() -> BoxedStrategy<(f64, f64)> {
         (range_with_edges(-1.0e6, 1.0e6), nonzero_divisor_inputs()).boxed()
     }
 
-    fn asinh_inputs() -> BoxedStrategy<f64> {
+    fn ptest_asinh_inputs() -> BoxedStrategy<f64> {
         prop_oneof![
             4 => -1.0e20..1.0e20_f64,
             2 => tiny_signed(),
@@ -4346,7 +4346,7 @@ mod tests {
         .boxed()
     }
 
-    fn acosh_inputs() -> BoxedStrategy<f64> {
+    fn ptest_acosh_inputs() -> BoxedStrategy<f64> {
         prop_oneof![
             4 => 1.0..1.0e20_f64,
             2 => near_one_above(),
@@ -4357,7 +4357,7 @@ mod tests {
         .boxed()
     }
 
-    fn atanh_inputs() -> BoxedStrategy<f64> {
+    fn ptest_atanh_inputs() -> BoxedStrategy<f64> {
         let mid = -0.999_999..0.999_999_f64;
         prop_oneof![
             5 => mid,
@@ -4368,7 +4368,7 @@ mod tests {
         .boxed()
     }
 
-    fn erf_inputs() -> BoxedStrategy<f64> {
+    fn ptest_erf_inputs() -> BoxedStrategy<f64> {
         range_with_edges(-6.0, 6.0)
     }
 
@@ -4389,7 +4389,7 @@ mod tests {
         .boxed()
     }
 
-    fn logb_inputs() -> BoxedStrategy<f64> {
+    fn ptest_logb_inputs() -> BoxedStrategy<f64> {
         prop_oneof![
             2 => tiny_signed(),
             2 => subnormal_f64(),
@@ -4400,7 +4400,7 @@ mod tests {
         .boxed()
     }
 
-    fn rounding_inputs() -> BoxedStrategy<f64> {
+    fn ptest_rounding_inputs() -> BoxedStrategy<f64> {
         let mid = -1.0e6..1.0e6_f64;
         let near_int = (
             -1_000_000i64..=1_000_000i64,
@@ -4432,7 +4432,7 @@ mod tests {
         .boxed()
     }
 
-    fn fma_inputs() -> BoxedStrategy<(f64, f64, f64)> {
+    fn ptest_fma_inputs() -> BoxedStrategy<(f64, f64, f64)> {
         let mid = (-1.0e3..1.0e3_f64, -1.0e3..1.0e3_f64, -1.0e3..1.0e3_f64);
         let tiny = (tiny_signed(), tiny_signed(), tiny_signed());
         let cancellation = (
@@ -4484,11 +4484,11 @@ mod tests {
         .boxed()
     }
 
-    fn remquo_inputs() -> BoxedStrategy<(f64, f64)> {
+    fn ptest_remquo_inputs() -> BoxedStrategy<(f64, f64)> {
         (range_with_edges(-1.0e6, 1.0e6), nonzero_divisor_inputs()).boxed()
     }
 
-    fn fdim_inputs() -> BoxedStrategy<(f64, f64)> {
+    fn ptest_fdim_inputs() -> BoxedStrategy<(f64, f64)> {
         (
             range_with_edges(-1.0e6, 1.0e6),
             range_with_edges(-1.0e6, 1.0e6),
@@ -4496,7 +4496,7 @@ mod tests {
             .boxed()
     }
 
-    fn nextafter_inputs() -> BoxedStrategy<(f64, f64)> {
+    fn ptest_nextafter_inputs() -> BoxedStrategy<(f64, f64)> {
         prop_oneof![
             4 => (wide_signed_inputs(), wide_signed_inputs()),
             2 => (tiny_signed(), Just(0.0)),
@@ -4515,13 +4515,13 @@ mod tests {
 
         #[cfg(feature = "mpfr")]
         #[test]
-        fn ptest_exp(x in exp_inputs()) {
+        fn ptest_exp(x in ptest_exp_inputs()) {
             let actual = fastlibm::exp(x);
             assert_ulp_eq_exp(actual, x, PROPTEST_ULP_TOL, &format!("exp({x})"));
         }
 
         #[test]
-        fn ptest_ln(x in ln_inputs()) {
+        fn ptest_ln(x in ptest_ln_inputs()) {
             if x.is_finite() && x > 0.0 {
                 let actual = fastlibm::ln(x);
                 let expected = ln_reference(x);
@@ -4535,7 +4535,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_sin(x in trig_inputs()) {
+        fn ptest_sin(x in ptest_trig_inputs()) {
             let actual = fastlibm::sin(x);
             let expected = sin_reference(x);
             assert_ulp_eq(
@@ -4547,7 +4547,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_cos(x in trig_inputs()) {
+        fn ptest_cos(x in ptest_trig_inputs()) {
             let actual = fastlibm::cos(x);
             let expected = cos_reference(x);
             assert_ulp_eq(
@@ -4559,7 +4559,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_sincos(x in trig_inputs()) {
+        fn ptest_sincos(x in ptest_trig_inputs()) {
             let (s_actual, c_actual) = fastlibm::sincos(x);
             assert_ulp_eq(
                 s_actual,
@@ -4576,14 +4576,14 @@ mod tests {
         }
 
         #[test]
-        fn ptest_exp2(x in exp2_inputs()) {
+        fn ptest_exp2(x in ptest_exp2_inputs()) {
             let actual = fastlibm::exp2(x);
             let expected = exp2_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("exp2({x})"));
         }
 
         #[test]
-        fn ptest_expm1(x in expm1_inputs()) {
+        fn ptest_expm1(x in ptest_expm1_inputs()) {
             let actual = fastlibm::expm1(x);
             let expected = expm1_reference(x);
             assert_ulp_eq(
@@ -4595,7 +4595,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_log2(x in log2_inputs()) {
+        fn ptest_log2(x in ptest_log2_inputs()) {
             if x.is_finite() && x > 0.0 {
                 let actual = fastlibm::log2(x);
                 let expected = log2_reference(x);
@@ -4604,7 +4604,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_log10(x in log10_inputs()) {
+        fn ptest_log10(x in ptest_log10_inputs()) {
             if x.is_finite() && x > 0.0 {
                 let actual = fastlibm::log10(x);
                 let expected = log10_reference(x);
@@ -4613,7 +4613,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_log1p(x in log1p_inputs()) {
+        fn ptest_log1p(x in ptest_log1p_inputs()) {
             let actual = fastlibm::log1p(x);
             let expected = log1p_reference(x);
             if expected.is_nan() {
@@ -4624,7 +4624,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_tan(x in tan_inputs()) {
+        fn ptest_tan(x in ptest_tan_inputs()) {
             let actual = fastlibm::tan(x);
             let expected = tan_reference(x);
             assert_ulp_eq(
@@ -4636,7 +4636,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_atan(x in atan_inputs()) {
+        fn ptest_atan(x in ptest_atan_inputs()) {
             let actual = fastlibm::atan(x);
             let expected = atan_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("atan({x})"));
@@ -4657,42 +4657,42 @@ mod tests {
         }
 
         #[test]
-        fn ptest_atan2((y, x) in atan2_inputs()) {
+        fn ptest_atan2((y, x) in ptest_atan2_inputs()) {
             let actual = fastlibm::atan2(y, x);
             let expected = atan2_reference(y, x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("atan2({y},{x})"));
         }
 
         #[test]
-        fn ptest_hypot((x, y) in hypot_inputs()) {
+        fn ptest_hypot((x, y) in ptest_hypot_inputs()) {
             let actual = fastlibm::hypot(x, y);
             let expected = hypot_reference(x, y);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("hypot({x},{y})"));
         }
 
         #[test]
-        fn ptest_sinh(x in sinh_inputs()) {
+        fn ptest_sinh(x in ptest_sinh_inputs()) {
             let actual = fastlibm::sinh(x);
             let expected = sinh_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("sinh({x})"));
         }
 
         #[test]
-        fn ptest_cosh(x in cosh_inputs()) {
+        fn ptest_cosh(x in ptest_cosh_inputs()) {
             let actual = fastlibm::cosh(x);
             let expected = cosh_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("cosh({x})"));
         }
 
         #[test]
-        fn ptest_tanh(x in tanh_inputs()) {
+        fn ptest_tanh(x in ptest_tanh_inputs()) {
             let actual = fastlibm::tanh(x);
             let expected = tanh_reference(x);
             assert_ulp_eq(actual, expected, TANH_ULP_TOL, &format!("tanh({x})"));
         }
 
         #[test]
-        fn ptest_pow((x, y) in pow_inputs()) {
+        fn ptest_pow((x, y) in ptest_pow_inputs()) {
             let actual = fastlibm::pow(x, y);
             let expected = pow_reference(x, y);
             assert_ulp_eq(
@@ -4704,14 +4704,14 @@ mod tests {
         }
 
         #[test]
-        fn ptest_sqrt(x in sqrt_inputs()) {
+        fn ptest_sqrt(x in ptest_sqrt_inputs()) {
             let actual = fastlibm::sqrt(x);
             let expected = sqrt_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("sqrt({x})"));
         }
 
         #[test]
-        fn ptest_cbrt(x in cbrt_inputs()) {
+        fn ptest_cbrt(x in ptest_cbrt_inputs()) {
             let actual = fastlibm::cbrt(x);
             let expected = cbrt_reference(x);
             assert_ulp_eq(
@@ -4723,7 +4723,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_fmod((x, y) in fmod_inputs()) {
+        fn ptest_fmod((x, y) in ptest_fmod_inputs()) {
             let actual = fastlibm::fmod(x, y);
             let expected = fmod_reference(x, y);
             if expected.is_nan() {
@@ -4734,7 +4734,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_remainder((x, y) in remainder_inputs()) {
+        fn ptest_remainder((x, y) in ptest_remainder_inputs()) {
             let actual = fastlibm::remainder(x, y);
             let expected = remainder_reference(x, y);
             if expected.is_nan() {
@@ -4750,21 +4750,21 @@ mod tests {
         }
 
         #[test]
-        fn ptest_asinh(x in asinh_inputs()) {
+        fn ptest_asinh(x in ptest_asinh_inputs()) {
             let actual = fastlibm::asinh(x);
             let expected = asinh_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("asinh({x})"));
         }
 
         #[test]
-        fn ptest_acosh(x in acosh_inputs()) {
+        fn ptest_acosh(x in ptest_acosh_inputs()) {
             let actual = fastlibm::acosh(x);
             let expected = acosh_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("acosh({x})"));
         }
 
         #[test]
-        fn ptest_atanh(x in atanh_inputs()) {
+        fn ptest_atanh(x in ptest_atanh_inputs()) {
             let actual = fastlibm::atanh(x);
             let expected = atanh_reference(x);
             assert_ulp_eq(actual, expected, ATANH_ULP_TOL, &format!("atanh({x})"));
@@ -4772,7 +4772,7 @@ mod tests {
 
         #[cfg(feature = "mpfr")]
         #[test]
-        fn ptest_erf(x in erf_inputs()) {
+        fn ptest_erf(x in ptest_erf_inputs()) {
             let actual = fastlibm::erf(x);
             let expected = erf_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("erf({x})"));
@@ -4780,14 +4780,14 @@ mod tests {
 
         #[cfg(feature = "mpfr")]
         #[test]
-        fn ptest_erfc(x in erf_inputs()) {
+        fn ptest_erfc(x in ptest_erf_inputs()) {
             let actual = fastlibm::erfc(x);
             let expected = erfc_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("erfc({x})"));
         }
 
         #[test]
-        fn ptest_exp10(x in exp10_inputs()) {
+        fn ptest_exp10(x in ptest_exp10_inputs()) {
             let actual = fastlibm::exp10(x);
             let expected = exp10_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("exp10({x})"));
@@ -4812,7 +4812,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_logb(x in logb_inputs()) {
+        fn ptest_logb(x in ptest_logb_inputs()) {
             if x != 0.0 {
                 let actual = fastlibm::logb(x);
                 let expected = logb_reference(x);
@@ -4821,7 +4821,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_ilogb(x in logb_inputs()) {
+        fn ptest_ilogb(x in ptest_logb_inputs()) {
             if x != 0.0 {
                 let actual = fastlibm::ilogb(x);
                 let expected = ilogb_reference(x);
@@ -4830,7 +4830,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_modf(x in rounding_inputs()) {
+        fn ptest_modf(x in ptest_rounding_inputs()) {
             let (frac, int) = fastlibm::modf(x);
             let (frac_e, int_e) = modf_reference(x);
             assert_ulp_eq(frac, frac_e, PROPTEST_ULP_TOL, &format!("modf frac({x})"));
@@ -4838,77 +4838,77 @@ mod tests {
         }
 
         #[test]
-        fn ptest_floor(x in rounding_inputs()) {
+        fn ptest_floor(x in ptest_rounding_inputs()) {
             let actual = fastlibm::floor(x);
             let expected = floor_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("floor({x})"));
         }
 
         #[test]
-        fn ptest_ceil(x in rounding_inputs()) {
+        fn ptest_ceil(x in ptest_rounding_inputs()) {
             let actual = fastlibm::ceil(x);
             let expected = ceil_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("ceil({x})"));
         }
 
         #[test]
-        fn ptest_trunc(x in rounding_inputs()) {
+        fn ptest_trunc(x in ptest_rounding_inputs()) {
             let actual = fastlibm::trunc(x);
             let expected = trunc_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("trunc({x})"));
         }
 
         #[test]
-        fn ptest_round(x in rounding_inputs()) {
+        fn ptest_round(x in ptest_rounding_inputs()) {
             let actual = fastlibm::round(x);
             let expected = round_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("round({x})"));
         }
 
         #[test]
-        fn ptest_rint(x in rounding_inputs()) {
+        fn ptest_rint(x in ptest_rounding_inputs()) {
             let actual = fastlibm::rint(x);
             let expected = rint_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("rint({x})"));
         }
 
         #[test]
-        fn ptest_nearbyint(x in rounding_inputs()) {
+        fn ptest_nearbyint(x in ptest_rounding_inputs()) {
             let actual = fastlibm::nearbyint(x);
             let expected = nearbyint_reference(x);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("nearbyint({x})"));
         }
 
         #[test]
-        fn ptest_lrint(x in rounding_inputs()) {
+        fn ptest_lrint(x in ptest_rounding_inputs()) {
             let actual = fastlibm::lrint(x);
             let expected = lrint_reference(x);
             assert_eq!(actual, expected, "lrint({x})");
         }
 
         #[test]
-        fn ptest_llrint(x in rounding_inputs()) {
+        fn ptest_llrint(x in ptest_rounding_inputs()) {
             let actual = fastlibm::llrint(x);
             let expected = llrint_reference(x);
             assert_eq!(actual, expected, "llrint({x})");
         }
 
         #[test]
-        fn ptest_lround(x in rounding_inputs()) {
+        fn ptest_lround(x in ptest_rounding_inputs()) {
             let actual = fastlibm::lround(x);
             let expected = lround_reference(x);
             assert_eq!(actual, expected, "lround({x})");
         }
 
         #[test]
-        fn ptest_llround(x in rounding_inputs()) {
+        fn ptest_llround(x in ptest_rounding_inputs()) {
             let actual = fastlibm::llround(x);
             let expected = llround_reference(x);
             assert_eq!(actual, expected, "llround({x})");
         }
 
         #[test]
-        fn ptest_fma((x, y, z) in fma_inputs()) {
+        fn ptest_fma((x, y, z) in ptest_fma_inputs()) {
             let actual = fastlibm::fma(x, y, z);
             let expected = fma_reference(x, y, z);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("fma({x},{y},{z})"));
@@ -4937,7 +4937,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_remquo((x, y) in remquo_inputs()) {
+        fn ptest_remquo((x, y) in ptest_remquo_inputs()) {
             prop_assume!(y != 0.0);
             let (actual_r, actual_q) = fastlibm::remquo(x, y);
             let (expected_r, expected_q) = remquo_reference(x, y);
@@ -4946,14 +4946,14 @@ mod tests {
         }
 
         #[test]
-        fn ptest_fdim((x, y) in fdim_inputs()) {
+        fn ptest_fdim((x, y) in ptest_fdim_inputs()) {
             let actual = fastlibm::fdim(x, y);
             let expected = fdim_reference(x, y);
             assert_ulp_eq(actual, expected, PROPTEST_ULP_TOL, &format!("fdim({x},{y})"));
         }
 
         #[test]
-        fn ptest_fmax((x, y) in fdim_inputs()) {
+        fn ptest_fmax((x, y) in ptest_fdim_inputs()) {
             let actual = fastlibm::fmax(x, y);
             let expected = fmax_reference(x, y);
             if actual == 0.0 && expected == 0.0 {
@@ -4964,7 +4964,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_fmin((x, y) in fdim_inputs()) {
+        fn ptest_fmin((x, y) in ptest_fdim_inputs()) {
             let actual = fastlibm::fmin(x, y);
             let expected = fmin_reference(x, y);
             if actual == 0.0 && expected == 0.0 {
@@ -4975,7 +4975,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_nextafter((x, y) in nextafter_inputs()) {
+        fn ptest_nextafter((x, y) in ptest_nextafter_inputs()) {
             let actual = fastlibm::nextafter(x, y);
             let expected = nextafter_reference(x, y);
             if actual.is_nan() {
