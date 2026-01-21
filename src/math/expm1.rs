@@ -13,6 +13,7 @@ const O_THRESHOLD: f64 = 7.097_827_128_933_839_730_96e+02;
 const LN2_HI: f64 = 6.931_471_803_691_238_164_90e-01;
 const LN2_LO: f64 = 1.908_214_929_270_587_700_02e-10;
 const INVLN2: f64 = core::f64::consts::LOG2_E;
+const SMALL_X: f64 = 0.007_812_5; // 2^-7
 const Q: [f64; 6] = [
     1.0,
     -3.333_333_333_333_313_164_28e-02,
@@ -25,6 +26,14 @@ const Q: [f64; 6] = [
 #[inline(always)]
 fn set_high_word(x: f64, hi: u32) -> f64 {
     with_hi_lo(hi, lo_word(x))
+}
+
+#[inline(always)]
+fn expm1_small(x: f64) -> f64 {
+    // x + x^2/2 + x^3/6 + x^4/24 + x^5/120 + x^6/720
+    let x2 = x * x;
+    let poly = 0.5 + x * (1.0 / 6.0 + x * (1.0 / 24.0 + x * (1.0 / 120.0 + x * (1.0 / 720.0))));
+    x + x2 * poly
 }
 
 #[inline(always)]
@@ -49,6 +58,9 @@ fn expm1_generic(mut x: f64) -> f64 {
         if xsb != 0 {
             return TINY - ONE;
         }
+    }
+    if hx < 0x3f80_0000 {
+        return expm1_small(x);
     }
 
     let mut k = 0i32;
@@ -154,6 +166,9 @@ unsafe fn expm1_fma(mut x: f64) -> f64 {
         if xsb != 0 {
             return TINY - ONE;
         }
+    }
+    if hx < 0x3f80_0000 {
+        return expm1_small(x);
     }
 
     let mut k = 0i32;

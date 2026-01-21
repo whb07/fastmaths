@@ -4693,6 +4693,136 @@ fn as_sinpipid_accurate(mut x: f64, l: &mut f64) -> f64 {
     sh
 }
 
+const LGAMMA_ASYM_C_BIG: [[f64; 2]; 8] = [
+    [
+        f64::from_bits(0x3fdacfe390c97d69),
+        f64::from_bits(0x3c734acf208a22c4),
+    ],
+    [
+        f64::from_bits(0x3fb5555555555555),
+        f64::from_bits(0x3c531799ffbcdddb),
+    ],
+    [
+        f64::from_bits(0xbf66c16c16c165a9),
+        f64::from_bits(0x3c01eefaee02f690),
+    ],
+    [
+        f64::from_bits(0x3f4a01a019ada522),
+        f64::from_bits(0xbbd4d52971deb155),
+    ],
+    [
+        f64::from_bits(0xbf4381377e3a546d),
+        f64::from_bits(0x3befd1b354a8db62),
+    ],
+    [
+        f64::from_bits(0x3f4b9486dc1c9886),
+        f64::from_bits(0xbbe2dac4b8cca031),
+    ],
+    [
+        f64::from_bits(0xbf5f3ecd8799f337),
+        f64::from_bits(0x3bfda5dd745e3963),
+    ],
+    [
+        f64::from_bits(0x3f76d399e5618390),
+        f64::from_bits(0x3c115e3000de141a),
+    ],
+];
+
+const LGAMMA_ASYM_C_SMALL: [[f64; 2]; 13] = [
+    [
+        f64::from_bits(0x3fdacfe390c97d69),
+        f64::from_bits(0x3c7f06a157d44d5b),
+    ],
+    [
+        f64::from_bits(0x3fb5555555555541),
+        f64::from_bits(0x3c59d5fc10df4161),
+    ],
+    [
+        f64::from_bits(0xbf66c16c16bfb733),
+        f64::from_bits(0xbbf557d8fba9e97a),
+    ],
+    [
+        f64::from_bits(0x3f4a01a01651819c),
+        f64::from_bits(0xbbedd3c0f402122a),
+    ],
+    [
+        f64::from_bits(0xbf438136b229bfb4),
+        f64::from_bits(0xbbc879990edddc5f),
+    ],
+    [
+        f64::from_bits(0x3f4b94c0472d00a0),
+        f64::from_bits(0x3be215a15f7d9289),
+    ],
+    [
+        f64::from_bits(0xbf5f619a122c3918),
+        f64::from_bits(0x3bf13405abdba76d),
+    ],
+    [
+        f64::from_bits(0x3f79edef47081644),
+        f64::from_bits(0x3c1d9d833b12b9b0),
+    ],
+    [
+        f64::from_bits(0xbf9bfc20185bf7cc),
+        f64::from_bits(0xbc38aa555605e3b1),
+    ],
+    [
+        f64::from_bits(0x3fc0e832a9372330),
+        f64::from_bits(0x3c5871cbde1ab342),
+    ],
+    [
+        f64::from_bits(0xbfe2beb46518ed4a),
+        f64::from_bits(0xbc50298c44c99cee),
+    ],
+    [
+        f64::from_bits(0x3ffe5717107e0999),
+        f64::from_bits(0x3c75bdfe7ac38f81),
+    ],
+    [
+        f64::from_bits(0xc0090c04fbd840a6),
+        f64::from_bits(0xbc95d2fbfe47e148),
+    ],
+];
+
+#[inline(never)]
+fn as_lgamma_asym(xh: f64, xl: &mut f64) -> f64 {
+    let zh = 1.0 / xh;
+    let dz = *xl * zh;
+    let zl = (fma(zh, -xh, 1.0) - dz) * zh;
+    let mut ll = 0.0;
+    let mut lh = as_logd(xh, &mut ll);
+    ll += dz;
+    lh = muldd2(xh - 0.5, *xl, lh - 1.0, ll, &mut ll);
+    let mut z2l = 0.0;
+    let z2h = muldd2(zh, zl, zh, zl, &mut z2l);
+    let x2 = z2h * z2h;
+    let mut fh;
+    let mut fl;
+    if xh > 11.5 {
+        let c = &LGAMMA_ASYM_C_BIG;
+        lh = fastsum(lh, ll, c[0][0], c[0][1], &mut ll);
+        let q0 = c[2][0] + z2h * c[3][0];
+        let q2 = c[4][0] + z2h * c[5][0];
+        let q4 = c[6][0] + z2h * c[7][0];
+        fl = z2h * (q0 + x2 * (q2 + x2 * q4));
+        fh = polydd2(z2h, z2l, 1, &c[1..], &mut fl);
+    } else {
+        let c = &LGAMMA_ASYM_C_SMALL;
+        lh = fastsum(lh, ll, c[0][0], c[0][1], &mut ll);
+        let x4 = x2 * x2;
+        let q0 = c[3][0] + z2h * c[4][0];
+        let q2 = c[5][0] + z2h * c[6][0];
+        let q4 = c[7][0] + z2h * c[8][0];
+        let q6 = c[9][0] + z2h * c[10][0];
+        let q8 = c[11][0] + z2h * c[12][0];
+        let q4 = q4 + x2 * (q6 + x2 * q8);
+        let q0 = q0 + x2 * q2 + x4 * q4;
+        fl = z2h * q0;
+        fh = polydd2(z2h, z2l, 2, &c[1..], &mut fl);
+    }
+    fh = muldd2(zh, zl, fh, fl, &mut fl);
+    fastsum(lh, ll, fh, fl, xl)
+}
+
 #[inline(never)]
 fn as_lgamma_asym_accurate(xh: f64, xl: &mut f64, e: &mut f64) -> f64 {
     let mut l2 = 0.0;
@@ -4830,6 +4960,381 @@ fn exp_dd_parts(h: f64, l: f64) -> (f64, f64) {
 fn exp_dd(h: f64, l: f64) -> f64 {
     let (ph, pl) = exp_dd_parts(h, l);
     ph + pl
+}
+
+// ---- tgamma fast-path coefficients (core-math) ----
+
+const TGAMMA_SMALL_CC: [[f64; 2]; 28] = [
+    [
+        f64::from_bits(0xbfe2788cfc6fb619),
+        f64::from_bits(0x3c56cb90701fbfba),
+    ],
+    [
+        f64::from_bits(0x3fefa658c23b1578),
+        f64::from_bits(0x3c8dd92b465a81dd),
+    ],
+    [
+        f64::from_bits(0xbfed0a118f324b63),
+        f64::from_bits(0x3c53a4f48373c073),
+    ],
+    [
+        f64::from_bits(0x3fef6a51055096b5),
+        f64::from_bits(0x3c7fabe4f73da654),
+    ],
+    [
+        f64::from_bits(0xbfef6c80ec38b67b),
+        f64::from_bits(0x3c8c9fc797e7567e),
+    ],
+    [
+        f64::from_bits(0x3fefc7e0a6eb310b),
+        f64::from_bits(0xbc5042340fb21e2f),
+    ],
+    [
+        f64::from_bits(0xbfefdf3f157b7a39),
+        f64::from_bits(0xbc86fd12a61ae3a9),
+    ],
+    [
+        f64::from_bits(0x3feff07b5a17ff6c),
+        f64::from_bits(0xbc89b8f7ad70e4bc),
+    ],
+    [
+        f64::from_bits(0xbfeff803d68a0bd4),
+        f64::from_bits(0x3c4ed4f2b2dcc156),
+    ],
+    [
+        f64::from_bits(0x3feffc0841d585a3),
+        f64::from_bits(0xbc87089ffbe760f0),
+    ],
+    [
+        f64::from_bits(0xbfeffe018c484f48),
+        f64::from_bits(0x3c8f8a632e2ff912),
+    ],
+    [
+        f64::from_bits(0x3fefff00b768f1c4),
+        f64::from_bits(0x3c750de70bb4e28b),
+    ],
+    [
+        f64::from_bits(0xbfefff8035584df4),
+        f64::from_bits(0xbc8aae8f6d8b868d),
+    ],
+    [
+        f64::from_bits(0x3fefffc012f95019),
+        f64::from_bits(0x3c8d26498825213d),
+    ],
+    [
+        f64::from_bits(0xbfefffe0062afaf7),
+        f64::from_bits(0x3c8ef9359641ed4b),
+    ],
+    [
+        f64::from_bits(0x3feffff002146fec),
+        f64::from_bits(0x3c81ce6548eaa3c0),
+    ],
+    [
+        f64::from_bits(0xbfeffff800af4ca8),
+        f64::from_bits(0x3c767121c2223cb7),
+    ],
+    [
+        f64::from_bits(0x3feffffc0037a50d),
+        f64::from_bits(0xbc67c2694e8ff6af),
+    ],
+    [
+        f64::from_bits(0xbfeffffe00676ecc),
+        f64::from_bits(0xbc82563151dfa334),
+    ],
+    [
+        f64::from_bits(0x3fefffff00ac53bf),
+        f64::from_bits(0x3c83effd975c6fec),
+    ],
+    [
+        f64::from_bits(0xbfefffff72b5b5d1),
+        f64::from_bits(0x3c8fb25bd33b12e8),
+    ],
+    [
+        f64::from_bits(0x3fefffffa828c9f3),
+        f64::from_bits(0x3c85fde8ff2fb275),
+    ],
+    [
+        f64::from_bits(0xbff00000bc9c338d),
+        f64::from_bits(0xbc77ced37913c915),
+    ],
+    [
+        f64::from_bits(0x3ff000014750b54c),
+        f64::from_bits(0x3c9980564dfb043c),
+    ],
+    [
+        f64::from_bits(0xbfefffdabf3f1dfb),
+        f64::from_bits(0xbc8e34acb3149e71),
+    ],
+    [
+        f64::from_bits(0x3fefffc7cf7439c3),
+        f64::from_bits(0xbc82599c887c744a),
+    ],
+    [
+        f64::from_bits(0xbff001452e7ff0b7),
+        f64::from_bits(0xbc7acc4a235f0de4),
+    ],
+    [
+        f64::from_bits(0x3ff001c6c5b18192),
+        f64::from_bits(0x3c935874aa96ce14),
+    ],
+];
+
+const TGAMMA_SMALL_C: [f64; 8] = [
+    f64::from_bits(0xbfefdf5126e6a83b),
+    f64::from_bits(0x3fefd56c1b531709),
+    f64::from_bits(0xbff0956741759e58),
+    f64::from_bits(0x3ff0b6167d27c5c4),
+    f64::from_bits(0xbfe8e69e55b6dca0),
+    f64::from_bits(0x3fe7e124660c827d),
+    f64::from_bits(0xbffc797b42bd6745),
+    f64::from_bits(0x3ffd688bb8db046c),
+];
+
+const TGAMMA_CC: [[f64; 2]; 18] = [
+    [
+        f64::from_bits(0x400a96390899a074),
+        f64::from_bits(0xbc56e95430fab070),
+    ],
+    [
+        f64::from_bits(0x400d545472146024),
+        f64::from_bits(0x3c7c07f9774e12b3),
+    ],
+    [
+        f64::from_bits(0x400491ad1cb98836),
+        f64::from_bits(0x3ca51e26c4cfd792),
+    ],
+    [
+        f64::from_bits(0x3ff4a0b6a8230929),
+        f64::from_bits(0x3c9c1c6993b10594),
+    ],
+    [
+        f64::from_bits(0x3fe0e5d232b95859),
+        f64::from_bits(0x3c7d4248748dd78b),
+    ],
+    [
+        f64::from_bits(0x3fc71d1672129fee),
+        f64::from_bits(0x3c43b47c61245ee6),
+    ],
+    [
+        f64::from_bits(0x3fabd2afde7e4816),
+        f64::from_bits(0xbc325466b734902d),
+    ],
+    [
+        f64::from_bits(0x3f8d8376e1031a16),
+        f64::from_bits(0x3c22cd76af7fbb20),
+    ],
+    [
+        f64::from_bits(0x3f6c9e94992c88c1),
+        f64::from_bits(0x3bf5d7be78c93d16),
+    ],
+    [
+        f64::from_bits(0x3f490ba7276a0c19),
+        f64::from_bits(0xbbd6cad258076bb3),
+    ],
+    [
+        f64::from_bits(0x3f249cfed9d63c8b),
+        f64::from_bits(0x3b50a8ada0cff18d),
+    ],
+    [
+        f64::from_bits(0x3efec018849c245b),
+        f64::from_bits(0x3b9cea7c4e5e9d4f),
+    ],
+    [
+        f64::from_bits(0x3ed65e5a18d31c17),
+        f64::from_bits(0x3b712fc2f27069ec),
+    ],
+    [
+        f64::from_bits(0x3eaca1890add8727),
+        f64::from_bits(0x3b469c0fe53eb0fa),
+    ],
+    [
+        f64::from_bits(0x3e8378b3b91f9033),
+        f64::from_bits(0xbb1d62590f524392),
+    ],
+    [
+        f64::from_bits(0x3e5432cdb3640fca),
+        f64::from_bits(0xbae33987f0b3b6b6),
+    ],
+    [
+        f64::from_bits(0x3e2f239fc9cf2155),
+        f64::from_bits(0xbac8a95d04bfb2e4),
+    ],
+    [
+        f64::from_bits(0x3dee3ea4e1366932),
+        f64::from_bits(0xba25c950f5465458),
+    ],
+];
+
+const TGAMMA_C: [f64; 18] = [
+    f64::from_bits(0x400a96390899a074),
+    f64::from_bits(0x400d545472146024),
+    f64::from_bits(0x400491ad1cb98836),
+    f64::from_bits(0x3ff4a0b6a8230929),
+    f64::from_bits(0x3fe0e5d232b95859),
+    f64::from_bits(0x3fc71d1672129fee),
+    f64::from_bits(0x3fabd2afde7e4816),
+    f64::from_bits(0x3f8d8376e1031a16),
+    f64::from_bits(0x3f6c9e94992c88c1),
+    f64::from_bits(0x3f490ba7276a0c19),
+    f64::from_bits(0x3f249cfed9d63c8b),
+    f64::from_bits(0x3efec018849c245b),
+    f64::from_bits(0x3ed65e5a18d31c17),
+    f64::from_bits(0x3eaca1890add8727),
+    f64::from_bits(0x3e8378b3b91f9033),
+    f64::from_bits(0x3e5432cdb3640fca),
+    f64::from_bits(0x3e2f239fc9cf2155),
+    f64::from_bits(0x3dee3ea4e1366932),
+];
+
+const TGAMMA_EPS: f64 = f64::from_bits(0x3b92e3b40a0e9b4f);
+const TGAMMA_EPS_BIG: f64 = f64::from_bits(0x3ba2e3b40a0e9b4f);
+const TGAMMA_EPS_BIG2: f64 = f64::from_bits(0x3b66aad80c11872c);
+
+#[inline(always)]
+fn tgamma_fast(x: f64) -> Option<f64> {
+    let ax = x.abs();
+    if ax < 0.25 {
+        let x2 = x * x;
+        let x4 = x2 * x2;
+        let mut c0 = TGAMMA_SMALL_C[0]
+            + x * TGAMMA_SMALL_C[1]
+            + x2 * (TGAMMA_SMALL_C[2] + x * TGAMMA_SMALL_C[3]);
+        let c4 = TGAMMA_SMALL_C[4]
+            + x * TGAMMA_SMALL_C[5]
+            + x2 * (TGAMMA_SMALL_C[6] + x * TGAMMA_SMALL_C[7]);
+        c0 += x4 * c4;
+
+        let mut cl = x * c0;
+        let ch = polyddd(x, TGAMMA_SMALL_CC.len(), &TGAMMA_SMALL_CC, &mut cl);
+        let mut fh = 1.0 / x;
+        let dh = fma(fh, -x, 1.0);
+        let mut fl = dh * fh;
+        let mut fll = fma(fl, -x, dh) * fh;
+        fl = sumdd(fl, fll, ch, cl, &mut fll);
+        fl = twosum(fl, fll, &mut fll);
+        fh = fasttwosum(fh, fl, &mut fl);
+        fl = fasttwosum(fl, fll, &mut fll);
+        let mut et = 0.0;
+        fasttwosum(fh, 2.0 * fl, &mut et);
+        if et == 0.0 {
+            let bump = f64::from_bits(0x3cb0000000000000);
+            if copysign(1.0, fl) * copysign(1.0, fll) > 0.0 {
+                fl *= 1.0 + bump;
+            } else {
+                fl *= 1.0 - bump;
+            }
+        }
+        return Some(fh + fl);
+    }
+
+    if x >= f64::from_bits(0x406573fae561f648) {
+        return Some(f64::INFINITY);
+    }
+
+    let fx = floor(x);
+    if fx == x {
+        if x == 0.0 {
+            return Some(f64::INFINITY);
+        }
+        if x < 0.0 {
+            return Some(f64::NAN);
+        }
+        let n = x as i64;
+        if n <= 20 {
+            let mut acc: u128 = 1;
+            for i in 2..n {
+                acc *= i as u128;
+            }
+            return Some(acc as f64);
+        }
+        let mut hi = 1.0;
+        let mut lo = 0.0;
+        let mut x0 = 1.0;
+        for _ in 1..n {
+            let mut l = 0.0;
+            hi = mulddd2(x0, hi, lo, &mut l);
+            lo = l;
+            x0 += 1.0;
+        }
+        return Some(hi + lo);
+    }
+
+    if x <= -184.0 {
+        return None;
+    }
+
+    if x < -3.0 {
+        let mut ll = 0.0;
+        let lh = as_lgamma_asym(fasttwosum(-x, 1.0, &mut ll), &mut ll);
+        let (yh, yl) = exp_dd_parts(lh, ll);
+        let mut sl = 0.0;
+        let sh = sinpi_parts(x, &mut sl);
+        let mut pl = 0.0;
+        let ph = muldd2(sh, sl, yh, yl, &mut pl);
+        let rh = 1.0 / ph;
+        let rl = (fma(rh, -ph, 1.0) - pl * rh) * rh;
+        let eps =
+            rh * (f64::from_bits(0x3bbeb2049057bc61) - x * f64::from_bits(0x3b661019f74442b7));
+        let ub = rh + (rl + eps);
+        let lb = rh + (rl - eps);
+        if ub == lb {
+            return Some(ub);
+        }
+        return None;
+    }
+
+    if x > 4.0 {
+        let mut ll = 0.0;
+        let lh = as_lgamma_asym(x, &mut ll);
+        let (yh, yl) = exp_dd_parts(lh, ll);
+        let eps = yh * (TGAMMA_EPS_BIG + x * TGAMMA_EPS_BIG2);
+        let ub = yh + (yl + eps);
+        let lb = yh + (yl - eps);
+        if ub == lb {
+            return Some(ub);
+        }
+        return None;
+    }
+
+    let z = x;
+    let m = z - f64::from_bits(0x400c000000000000);
+    let i = roundeven_finite(m);
+    let d = z - (i + f64::from_bits(0x400c000000000000));
+    let d2 = d * d;
+    let d4 = d2 * d2;
+    let mut fl = d
+        * ((TGAMMA_C[10] + d * TGAMMA_C[11])
+            + d2 * (TGAMMA_C[12] + d * TGAMMA_C[13])
+            + d4 * ((TGAMMA_C[14] + d * TGAMMA_C[15]) + d2 * (TGAMMA_C[16] + d * TGAMMA_C[17])));
+    let mut fh = polyddd(d, 10, &TGAMMA_CC, &mut fl);
+    let jm = i.abs() as i32;
+    let mut wh = 1.0;
+    let mut wl = 0.0;
+    let mut xph = z;
+    let mut xpl = 0.0;
+    if jm != 0 {
+        wh = xph;
+        for _ in 1..jm {
+            let mut l = 0.0;
+            if xph.abs() > 1.0 {
+                xph = fasttwosum(xph, 1.0, &mut l);
+            } else {
+                xph = fasttwosum(1.0, xph, &mut l);
+            }
+            xpl += l;
+            wh = muldd2(xph, xpl, wh, wl, &mut wl);
+        }
+    }
+    let rh = 1.0 / wh;
+    let rl = (fma(rh, -wh, 1.0) - wl * rh) * rh;
+    fh = muldd2(rh, rl, fh, fl, &mut fl);
+    let eps = fh * TGAMMA_EPS;
+    let ub = fh + (fl + eps);
+    let lb = fh + (fl - eps);
+    if ub == lb {
+        return Some(ub);
+    }
+    None
 }
 
 #[inline(always)]
@@ -5513,7 +6018,7 @@ pub fn lgamma(x: f64) -> f64 {
 }
 
 #[inline(always)]
-pub fn tgamma(x: f64) -> f64 {
+fn tgamma_slow(x: f64) -> f64 {
     if x.is_nan() {
         return x;
     }
@@ -5566,6 +6071,34 @@ pub fn tgamma(x: f64) -> f64 {
         return if sign < 0.0 { -y } else { y };
     }
     tgamma_pos(x)
+}
+
+#[inline(always)]
+pub fn tgamma(x: f64) -> f64 {
+    if x.is_nan() {
+        return x;
+    }
+    if x == 0.0 {
+        return if x.is_sign_negative() {
+            f64::NEG_INFINITY
+        } else {
+            f64::INFINITY
+        };
+    }
+    if x.is_infinite() {
+        return if x.is_sign_positive() {
+            f64::INFINITY
+        } else {
+            f64::NAN
+        };
+    }
+    if x <= 0.0 && x == floor(x) {
+        return f64::NAN;
+    }
+    if let Some(v) = tgamma_fast(x) {
+        return v;
+    }
+    tgamma_slow(x)
 }
 
 #[inline(never)]

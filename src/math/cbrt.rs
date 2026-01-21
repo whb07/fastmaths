@@ -26,6 +26,17 @@ fn frexp(mut x: f64) -> (f64, i32) {
     (mant, exp_out)
 }
 
+#[inline(always)]
+fn div_rem_3(x: i32) -> (i32, i32) {
+    // Truncating division by 3 via reciprocal multiply.
+    let sign = x >> 31;
+    let ux = ((x ^ sign) as u32).wrapping_sub(sign as u32);
+    let uq = ((ux as u64 * 0xaaaa_aaab_u64) >> 33) as i32;
+    let q = (uq ^ sign) - sign;
+    let r = x - q * 3;
+    (q, r)
+}
+
 #[inline]
 pub fn cbrt(x: f64) -> f64 {
     if x.is_nan() || x.is_infinite() || x == 0.0 {
@@ -42,11 +53,12 @@ pub fn cbrt(x: f64) -> f64 {
                     + xm * (-1.834_692_774_836_130_9
                         + xm * (0.784_932_344_976_639_3 - 0.145_263_899_385_486_38 * xm)))));
 
+    let (q, r) = div_rem_3(xe);
+    let idx = (2 + r) as usize;
     let t2 = u * u * u;
-    let idx = (2 + (xe % 3)) as usize;
     let ym = u * (t2 + 2.0 * xm) / (2.0 * t2 + xm) * FACTOR[idx];
 
-    let mut y = scalbn_internal(ym, xe / 3);
+    let mut y = scalbn_internal(ym, q);
     if x.is_sign_negative() {
         y = -y;
     }
