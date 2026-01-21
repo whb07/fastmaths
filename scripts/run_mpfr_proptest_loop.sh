@@ -3,16 +3,37 @@ set -euo pipefail
 
 runs="${1:-10}"
 log_dir="${LOG_DIR:-proptest-runs}"
+parallel="${PARALLEL:-8}"
 
 mkdir -p "$log_dir"
 
 cmd=(cargo test --features mpfr)
+fail_file="$(mktemp)"
 
-for i in $(seq 1 "$runs"); do
+run_one() {
+    local i="$1"
+    local log="$log_dir/run_${i}.log"
     echo "=== Run $i/$runs ==="
-    log="$log_dir/run_${i}.log"
+    if ! (PROPTEST_CASES=100000 CARGO_TARGET_DIR="$log_dir/target_${i}" "${cmd[@]}" 2>&1 | tee "$log"); then
+        echo "$i" >> "$fail_file"
+    fi
+}
 
-    if ! (PROPTEST_CASES=100000 "${cmd[@]}" 2>&1 | tee "$log"); then
+running=0
+for i in $(seq 1 "$runs"); do
+    run_one "$i" &
+    running=$((running + 1))
+    if [[ "$running" -ge "$parallel" ]]; then
+        wait -n
+        running=$((running - 1))
+    fi
+done
+
+wait
+
+if [[ -s "$fail_file" ]]; then
+    while IFS= read -r i; do
+        log="$log_dir/run_${i}.log"
         echo "FAILED on run $i"
         echo "Saved full log to $log"
         echo "---- failure excerpt ----"
@@ -23,8 +44,10 @@ for i in $(seq 1 "$runs"); do
         fi
         echo "---- last 200 lines ----"
         tail -n 200 "$log"
-        exit 1
-    fi
-done
+    done < "$fail_file"
+    rm -f "$fail_file"
+    exit 1
+fi
 
+rm -f "$fail_file"
 echo "All $runs runs passed."
