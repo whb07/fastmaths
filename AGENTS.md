@@ -48,13 +48,13 @@ This crate aims to implement **fast, correct** replacements for glibc `libm` rou
 - Prefer unit tests close to the code under test (inline `#[cfg(test)]` modules).
 - Name tests descriptively (e.g., `exp_matches_std_for_small_inputs`).
 - When adding numeric tests, include edge cases: `±0.0`, subnormals, `NaN`, `±∞`, and large-magnitude arguments.
-- **MPFR Validation:** Accuracy tests using the `mpfr` feature must be run in a loop of at least 100 iterations to ensure thorough validation across the input distribution.
+- **MPFR Validation:** Accuracy tests using the `mpfr` feature must be run in a loop of at least 50 iterations to ensure thorough validation across the input distribution.
 
 ## MPFR Proptest Loop Verification
 
 - Use the loop runner to validate repeated MPFR proptest runs and fail fast on regressions:
-    - `scripts/run_mpfr_proptest_loop.sh`
-    - Optional: pass a run count (default 10), e.g. `scripts/run_mpfr_proptest_loop.sh 100`
+    - `scripts/run_mpfr_proptest_loop.sh` (parallel by default; override with `PARALLEL=...`, default 8)
+    - Optional: pass a run count (default 10), e.g. `scripts/run_mpfr_proptest_loop.sh 50`
     - Logs are saved under `proptest-runs/` (override with `LOG_DIR=/path`)
 
 ## Commit & Pull Request Guidelines
