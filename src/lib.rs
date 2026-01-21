@@ -4373,7 +4373,13 @@ mod tests {
     }
 
     fn gamma_inputs() -> BoxedStrategy<f64> {
-        let mid = -20.0..20.0_f64;
+        let pos = f64::MIN_POSITIVE..20.0_f64;
+        let neg_non_int =
+            (-20i32..=-1i32, 1u32..=NEAR_ONE_MAX_POW, any::<bool>()).prop_map(|(n, k, sign)| {
+                let delta = 2.0f64.powi(-(k as i32));
+                let base = n as f64;
+                if sign { base + delta } else { base - delta }
+            });
         let near_int =
             (-20i32..=20i32, 1u32..=NEAR_ONE_MAX_POW, any::<bool>()).prop_map(|(n, k, sign)| {
                 let delta = 2.0f64.powi(-(k as i32));
@@ -4381,8 +4387,9 @@ mod tests {
                 if sign { base + delta } else { base - delta }
             });
         prop_oneof![
-            4 => mid,
-            3 => near_int,
+            4 => pos,
+            3 => neg_non_int,
+            2 => near_int,
             1 => near_one_both(),
             1 => tiny_signed(),
         ]
