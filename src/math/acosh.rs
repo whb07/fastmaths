@@ -3,7 +3,15 @@
 //! Piecewise algorithm for x>=1: near 1 uses log1p with sqrt(x-1); moderate
 //! uses log(2x) + correction; large values avoid loss of precision.
 
-use super::{ln, log1p, sqrt};
+use super::{fma_internal, ln, log1p, sqrt};
+
+#[inline(always)]
+fn two_sum(a: f64, b: f64) -> (f64, f64) {
+    let s = a + b;
+    let bb = s - a;
+    let err = (a - (s - bb)) + (b - bb);
+    (s, err)
+}
 
 #[inline(always)]
 pub fn acosh(x: f64) -> f64 {
@@ -17,7 +25,11 @@ pub fn acosh(x: f64) -> f64 {
     if e < 0x3ff + 1 {
         // 1 <= x < 2
         let t = x - 1.0;
-        return log1p(t + sqrt(t * t + 2.0 * t));
+        let z = fma_internal(t, t, 2.0 * t);
+        let s = sqrt(z);
+        let (sum_hi, sum_lo) = two_sum(t, s);
+        let y = log1p(sum_hi);
+        return y + sum_lo / (1.0 + sum_hi);
     }
     if e < 0x3ff + 26 {
         // x < 2^26
