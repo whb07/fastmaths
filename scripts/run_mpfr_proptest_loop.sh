@@ -10,6 +10,15 @@ mkdir -p "$log_dir"
 cmd=(cargo test --features mpfr)
 fail_file="$(mktemp)"
 
+cleanup() {
+    local code=$?
+    jobs -pr | xargs -r kill || true
+    rm -f "$fail_file"
+    exit "$code"
+}
+
+trap cleanup INT TERM EXIT
+
 run_one() {
     local i="$1"
     local log="$log_dir/run_${i}.log"
