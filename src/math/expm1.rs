@@ -38,6 +38,9 @@ fn expm1_small(x: f64) -> f64 {
 
 #[inline(always)]
 fn expm1_generic(mut x: f64) -> f64 {
+    if x == 0.0 {
+        return x;
+    }
     let mut hx = hi_word(x);
     let xsb = hx & 0x8000_0000;
     hx &= 0x7fff_ffff;
@@ -146,6 +149,9 @@ unsafe fn fma_f64(a: f64, b: f64, c: f64) -> f64 {
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "fma")]
 unsafe fn expm1_fma(mut x: f64) -> f64 {
+    if x == 0.0 {
+        return x;
+    }
     let mut hx = hi_word(x);
     let xsb = hx & 0x8000_0000;
     hx &= 0x7fff_ffff;

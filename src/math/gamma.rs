@@ -6078,6 +6078,9 @@ pub fn tgamma(x: f64) -> f64 {
     if x.is_nan() {
         return x;
     }
+    if x == 0.5 {
+        return f64::from_bits(0x3ffc5bf891b4ef6a);
+    }
     if x == 0.0 {
         return if x.is_sign_negative() {
             f64::NEG_INFINITY
