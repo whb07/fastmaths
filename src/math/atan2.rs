@@ -14,6 +14,9 @@ const PIO2_LO: f64 = 6.123_233_995_736_766_035_87e-17;
 #[inline(always)]
 fn div_hi_lo(n: f64, d: f64) -> (f64, f64) {
     let r0 = n / d;
+    if !r0.is_finite() {
+        return (r0, 0.0);
+    }
     let err = fma_internal(-r0, d, n);
     (r0, err / d)
 }
@@ -21,6 +24,9 @@ fn div_hi_lo(n: f64, d: f64) -> (f64, f64) {
 #[inline(always)]
 fn atan_with_correction(r: f64, r_lo: f64) -> f64 {
     let z = atan(r);
+    if !r.is_finite() {
+        return z;
+    }
     if r_lo == 0.0 {
         return z;
     }

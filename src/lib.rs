@@ -197,6 +197,72 @@ mod tests {
         }
     }
 
+    fn remquo_sig_exp(bits: u64) -> (u64, i32) {
+        let exp = ((bits >> 52) & 0x7ff) as i32;
+        let mant = bits & 0x000f_ffff_ffff_ffffu64;
+        if exp == 0 {
+            if mant == 0 {
+                return (0, 0);
+            }
+            return (mant, -1074);
+        }
+        (mant | (1u64 << 52), exp - 1023 - 52)
+    }
+
+    fn remquo_pow2_mod(mut exp: u32, modulus: u128) -> u128 {
+        let mut result = 1u128 % modulus;
+        let mut base = 2u128 % modulus;
+        while exp != 0 {
+            if (exp & 1) != 0 {
+                result = (result * base) % modulus;
+            }
+            base = (base * base) % modulus;
+            exp >>= 1;
+        }
+        result
+    }
+
+    fn remquo_quotient_mod8(x: f64, y: f64) -> i32 {
+        let ax_bits = x.to_bits() & 0x7fff_ffff_ffff_ffffu64;
+        let ay_bits = y.to_bits() & 0x7fff_ffff_ffff_ffffu64;
+        let (sigx, ex) = remquo_sig_exp(ax_bits);
+        let (sigy, ey) = remquo_sig_exp(ay_bits);
+        if sigx == 0 || sigy == 0 {
+            return 0;
+        }
+        let shift = ex - ey;
+        if shift >= 0 {
+            let d = sigy as u128;
+            let d16 = d << 4;
+            let pow2_mod_d = remquo_pow2_mod(shift as u32, d);
+            let pow2_mod_d16 = remquo_pow2_mod(shift as u32, d16);
+            let n_mod = ((sigx as u128) % d) * pow2_mod_d % d;
+            let n_mod16 = ((sigx as u128) % d16) * pow2_mod_d16 % d16;
+            let r = n_mod;
+            let q_mod16 = ((n_mod16 + d16 - r) / d) & 0x0f;
+            let mut q_mod8 = (q_mod16 & 0x7) as u8;
+            let twice_r = r << 1;
+            if twice_r > d || (twice_r == d && (q_mod16 & 1) != 0) {
+                q_mod8 = q_mod8.wrapping_add(1) & 0x7;
+            }
+            return q_mod8 as i32;
+        }
+        let s = (-shift) as u32;
+        if s > 60 {
+            return 0;
+        }
+        let d = (sigy as u128) << s;
+        let n = sigx as u128;
+        let q0 = n / d;
+        let r = n % d;
+        let mut q = q0;
+        let twice_r = r << 1;
+        if twice_r > d || (twice_r == d && (q0 & 1) != 0) {
+            q += 1;
+        }
+        (q as u8 & 0x7) as i32
+    }
+
     #[cfg(feature = "mpfr")]
     fn mpfr_sin_f64(x: f64) -> f64 {
         let mut v = Float::with_val(MPFR_PREC, x);
@@ -708,11 +774,10 @@ mod tests {
         let vy = Float::with_val(MPFR_PREC, y);
         q /= &vy;
         q.round_even_mut();
-        let q_int = clamp_f64_to_i64(q.to_f64());
         let mut r = Float::with_val(MPFR_PREC, x);
         r -= &vy * &q;
-        let mut quo = (q_int.abs() & 0x7) as i32;
-        if q_int < 0 {
+        let mut quo = remquo_quotient_mod8(x, y);
+        if (x.is_sign_negative() ^ y.is_sign_negative()) && quo != 0 {
             quo = -quo;
         }
         (r.to_f64(), quo)
@@ -3969,9 +4034,7 @@ mod tests {
     }
 
     fn subnormal_pos_f64() -> BoxedStrategy<f64> {
-        (1u64..(1u64 << 52))
-            .prop_map(|mant| f64::from_bits(mant))
-            .boxed()
+        (1u64..(1u64 << 52)).prop_map(f64::from_bits).boxed()
     }
 
     fn tiny_positive() -> BoxedStrategy<f64> {
@@ -4378,13 +4441,21 @@ mod tests {
             (-20i32..=-1i32, 1u32..=NEAR_ONE_MAX_POW, any::<bool>()).prop_map(|(n, k, sign)| {
                 let delta = 2.0f64.powi(-(k as i32));
                 let base = n as f64;
-                if sign { base + delta } else { base - delta }
+                let mut x = if sign { base + delta } else { base - delta };
+                if x <= 0.0 && x == x.trunc() {
+                    x = nextafter_reference(x, f64::INFINITY);
+                }
+                x
             });
         let near_int =
             (-20i32..=20i32, 1u32..=NEAR_ONE_MAX_POW, any::<bool>()).prop_map(|(n, k, sign)| {
                 let delta = 2.0f64.powi(-(k as i32));
                 let base = n as f64;
-                if sign { base + delta } else { base - delta }
+                let mut x = if sign { base + delta } else { base - delta };
+                if x <= 0.0 && x == x.trunc() {
+                    x = nextafter_reference(x, f64::INFINITY);
+                }
+                x
             });
         prop_oneof![
             4 => pos,

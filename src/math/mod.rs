@@ -228,55 +228,45 @@ fn is_inf_bits(u: u64) -> bool {
 /// scalbn_internal(x, n): multiply by 2^n without calling any libm.
 #[inline(always)]
 pub(crate) fn scalbn_internal(mut x: f64, n: i32) -> f64 {
-    let ux = f64_to_bits(x);
-    let e = get_exp_bits(ux) as i64;
-    if e == 0 {
-        if x == 0.0 {
-            return x;
-        }
-        // normalize
-        x *= f64_from_bits(0x4350_0000_0000_0000u64); // 2^54
-        let uy = f64_to_bits(x);
-        let ey = (get_exp_bits(uy) - 54) as i64;
-        let ne = ey + n as i64;
-        if ne >= 0x7ff {
-            return if x.is_sign_negative() {
-                f64::NEG_INFINITY
-            } else {
-                f64::INFINITY
-            };
-        }
-        if ne <= 0 {
-            // underflow/subnormal
-            let exp = ne + 1023 + 54;
-            if exp <= 0 {
-                return 0.0 * x;
-            }
-            return x * f64_from_bits((exp as u64) << 52) * f64_from_bits(0x3c90_0000_0000_0000u64);
-        }
-        return f64_from_bits((uy & 0x800f_ffff_ffff_ffffu64) | ((ne as u64) << 52));
-    }
-    if e == 0x7ff {
+    const TWO54: f64 = f64::from_bits(0x4350_0000_0000_0000);
+    const TWOM54: f64 = f64::from_bits(0x3c90_0000_0000_0000);
+    const HUGE: f64 = 1.0e300;
+    const TINY: f64 = 1.0e-300;
+
+    if n == 0 {
         return x;
     }
-    let ne = e + n as i64;
-    if ne <= 0 {
-        if ne <= -52 {
-            return 0.0 * x;
+
+    let mut ix = f64_to_bits(x);
+    let mut k = ((ix >> 52) & 0x7ff) as i32;
+    if k == 0 {
+        if (ix & 0x000f_ffff_ffff_ffff) == 0 {
+            return x;
         }
-        let mant = (ux & 0x000f_ffff_ffff_ffffu64) | 0x0010_0000_0000_0000u64;
-        let shift = (1 - ne) as u32;
-        let sub = mant >> shift;
-        return f64_from_bits((ux & 0x8000_0000_0000_0000u64) | sub);
+        x *= TWO54;
+        ix = f64_to_bits(x);
+        k = ((ix >> 52) & 0x7ff) as i32 - 54;
     }
-    if ne >= 0x7ff {
-        return if x.is_sign_negative() {
-            f64::NEG_INFINITY
-        } else {
-            f64::INFINITY
-        };
+    if k == 0x7ff {
+        return x + x;
     }
-    f64_from_bits((ux & 0x800f_ffff_ffff_ffffu64) | ((ne as u64) << 52))
+    if n < -50000 {
+        return TINY * copysign(TINY, x);
+    }
+    if n > 50000 || (k as i64 + n as i64) > 0x7fe {
+        return HUGE * copysign(HUGE, x);
+    }
+
+    k += n;
+    if k > 0 {
+        return f64_from_bits((ix & 0x800f_ffff_ffff_ffffu64) | ((k as u64) << 52));
+    }
+    if k <= -54 {
+        return TINY * copysign(TINY, x);
+    }
+    k += 54;
+    let res_bits = (ix & 0x800f_ffff_ffff_ffffu64) | ((k as u64) << 52);
+    f64_from_bits(res_bits) * TWOM54
 }
 
 /// floor(x) implemented via bit manipulation (no libm).

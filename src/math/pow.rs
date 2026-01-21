@@ -4,7 +4,7 @@
 //! to exp(y*log(x)) for the general case. Uses ln/exp cores with split constants
 //! for accuracy.
 
-use super::{f64_from_bits, f64_to_bits};
+use super::{f64_from_bits, f64_to_bits, fma_internal};
 
 const POW_LOG_TABLE_BITS: u32 = 7;
 const POW_LOG_N: u64 = 1u64 << POW_LOG_TABLE_BITS;
@@ -450,25 +450,40 @@ fn classify_integer(x: f64) -> (bool, bool) {
 }
 
 #[inline]
-fn powi(mut base: f64, mut exp: i64) -> f64 {
+fn dd_mul(a_hi: f64, a_lo: f64, b_hi: f64, b_lo: f64) -> (f64, f64) {
+    let p = a_hi * b_hi;
+    let e = fma_internal(a_hi, b_hi, -p) + (a_hi * b_lo + a_lo * b_hi) + (a_lo * b_lo);
+    let hi = p + e;
+    let lo = (p - hi) + e;
+    (hi, lo)
+}
+
+fn powi(base: f64, mut exp: i64) -> f64 {
     if exp == 0 {
         return 1.0;
     }
-    if exp < 0 {
-        base = 1.0 / base;
+    let neg = exp < 0;
+    if neg {
         exp = -exp;
     }
-    let mut acc = 1.0;
-    let mut b = base;
+    let mut acc_hi = 1.0;
+    let mut acc_lo = 0.0;
+    let mut b_hi = base;
+    let mut b_lo = 0.0;
     let mut e = exp as u64;
     while e != 0 {
         if (e & 1) != 0 {
-            acc *= b;
+            let (hi, lo) = dd_mul(acc_hi, acc_lo, b_hi, b_lo);
+            acc_hi = hi;
+            acc_lo = lo;
         }
-        b *= b;
+        let (hi, lo) = dd_mul(b_hi, b_lo, b_hi, b_lo);
+        b_hi = hi;
+        b_lo = lo;
         e >>= 1;
     }
-    acc
+    let res = acc_hi + acc_lo;
+    if neg { 1.0 / res } else { res }
 }
 
 #[inline]
@@ -659,8 +674,16 @@ pub fn pow(x: f64, y: f64) -> f64 {
         };
     }
     if x == 0.0 {
-        return if y.is_sign_positive() {
-            x
+        let (y_is_int, y_is_odd) = classify_integer(y);
+        if y.is_sign_positive() {
+            return if y_is_int && x.is_sign_negative() && y_is_odd {
+                -0.0
+            } else {
+                0.0
+            };
+        }
+        return if y_is_int && x.is_sign_negative() && y_is_odd {
+            f64::NEG_INFINITY
         } else {
             f64::INFINITY
         };
