@@ -25,16 +25,24 @@ run_one() {
     echo "=== Run $i/$runs ==="
     if ! (PROPTEST_CASES=100000 CARGO_TARGET_DIR="$log_dir/target_${i}" "${cmd[@]}" 2>&1 | tee "$log"); then
         echo "$i" >> "$fail_file"
+        # Stop any in-flight runs as soon as one fails.
+        jobs -pr | xargs -r kill || true
     fi
 }
 
 running=0
 for i in $(seq 1 "$runs"); do
+    if [[ -s "$fail_file" ]]; then
+        break
+    fi
     run_one "$i" &
     running=$((running + 1))
     if [[ "$running" -ge "$parallel" ]]; then
         wait -n
         running=$((running - 1))
+        if [[ -s "$fail_file" ]]; then
+            break
+        fi
     fi
 done
 
