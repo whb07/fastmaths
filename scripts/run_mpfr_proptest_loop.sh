@@ -7,7 +7,7 @@ parallel="${PARALLEL:-8}"
 
 mkdir -p "$log_dir"
 
-cmd=(cargo test --features mpfr)
+cmd=(cargo test --release --features mpfr)
 fail_file="$(mktemp)"
 
 cleanup() {
