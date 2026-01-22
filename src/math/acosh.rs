@@ -27,9 +27,14 @@ pub fn acosh(x: f64) -> f64 {
         let t = x - 1.0;
         let z = fma_internal(t, t, 2.0 * t);
         let s = sqrt(z);
+        let sqrt_corr = if s != 0.0 {
+            fma_internal(-s, s, z) / (2.0 * s)
+        } else {
+            0.0
+        };
         let (sum_hi, sum_lo) = two_sum(t, s);
         let y = log1p(sum_hi);
-        return y + sum_lo / (1.0 + sum_hi);
+        return y + (sum_lo + sqrt_corr) / (1.0 + sum_hi);
     }
     if e < 0x3ff + 26 {
         // x < 2^26
