@@ -22,11 +22,19 @@ trap cleanup INT TERM EXIT
 run_one() {
     local i="$1"
     local log="$log_dir/run_${i}.log"
+    local target_dir=""
+    if [[ "$runs" -gt 1 ]]; then
+        target_dir="$log_dir/target_${i}"
+    fi
     echo "=== Run $i/$runs ==="
-    if ! (PROPTEST_CASES=100000 CARGO_TARGET_DIR="$log_dir/target_${i}" "${cmd[@]}" 2>&1 | tee "$log"); then
+    if ! (PROPTEST_CASES=100000 ${target_dir:+CARGO_TARGET_DIR="$target_dir"} "${cmd[@]}" 2>&1 | tee "$log"); then
         echo "$i" >> "$fail_file"
         # Stop any in-flight runs as soon as one fails.
         jobs -pr | xargs -r kill || true
+    else
+        if [[ -n "$target_dir" ]]; then
+            rm -rf "$target_dir"
+        fi
     fi
 }
 
