@@ -75,9 +75,10 @@ pub fn sinh(x: f64) -> f64 {
             let s = 0.5 * (t + r);
             return if x.is_sign_negative() { -s } else { s };
         }
-        let e = exp(ax);
-        let inv = div_refine(1.0, e);
-        let s = 0.5 * (e - inv);
+        let t = expm1(ax);
+        let denom = 1.0 + t;
+        let r = div_refine(t, denom);
+        let s = 0.5 * (t + r);
         return if x.is_sign_negative() { -s } else { s };
     }
     if ax < EXP_HI {
