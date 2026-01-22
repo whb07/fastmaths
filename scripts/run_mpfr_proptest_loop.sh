@@ -4,15 +4,17 @@ set -euo pipefail
 runs="${1:-10}"
 log_dir="${LOG_DIR:-proptest-runs}"
 parallel="${PARALLEL:-8}"
+proptest_cases="${PROPTEST_CASES:-100000}"
 
 mkdir -p "$log_dir"
 
 mode="${MODE:-release}"
-cmd=(cargo test --features mpfr)
+build_cmd=(cargo test --features mpfr --no-run --message-format=json)
 if [[ "$mode" == "release" ]]; then
-    cmd=(cargo test --release --features mpfr)
+    build_cmd=(cargo test --release --features mpfr --no-run --message-format=json)
 fi
 fail_file="$(mktemp)"
+build_log="$log_dir/build.json"
 
 cleanup() {
     local code=$?
@@ -23,24 +25,66 @@ cleanup() {
 
 trap cleanup INT TERM EXIT
 
+echo "Building test binaries (mode=$mode)..."
+"${build_cmd[@]}" | tee "$build_log"
+
+mapfile -t test_bins < <(
+    python3 - "$build_log" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+bins = []
+with open(path, "r", encoding="utf-8") as f:
+    for line in f:
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if obj.get("reason") != "compiler-artifact":
+            continue
+        prof = obj.get("profile") or {}
+        if not prof.get("test"):
+            continue
+        exe = obj.get("executable")
+        if exe:
+            bins.append(exe)
+for exe in bins:
+    print(exe)
+PY
+)
+
+if [[ "${#test_bins[@]}" -eq 0 ]]; then
+    echo "No test binaries found in $build_log" >&2
+    exit 1
+fi
+
 run_one() {
     local i="$1"
     local log="$log_dir/run_${i}.log"
-    local target_dir=""
-    local -a env_vars=("PROPTEST_CASES=100000")
-    if [[ "$runs" -gt 1 ]]; then
-        target_dir="$log_dir/target_${i}"
-        env_vars+=("CARGO_TARGET_DIR=$target_dir")
-    fi
+    local -a env_vars=("PROPTEST_CASES=$proptest_cases")
     echo "=== Run $i/$runs ==="
-    if ! (env "${env_vars[@]}" "${cmd[@]}" 2>&1 | tee "$log"); then
+    if ! (
+        set +e
+        status=0
+        for exe in "${test_bins[@]}"; do
+            echo ">>> $exe"
+            env "${env_vars[@]}" "$exe"
+            rc=$?
+            if [[ "$rc" -ne 0 ]]; then
+                echo ">>> $exe exited with $rc"
+                status="$rc"
+                break
+            fi
+        done
+        exit "$status"
+    ) 2>&1 | tee "$log"; then
         echo "$i" >> "$fail_file"
         # Stop any in-flight runs as soon as one fails.
         jobs -pr | xargs -r kill || true
-    else
-        if [[ -n "$target_dir" ]]; then
-            rm -rf "$target_dir"
-        fi
+    elif rg -n -q "test result: FAILED|failures:|panicked at|error: test failed" "$log" 2>/dev/null; then
+        echo "$i" >> "$fail_file"
+        jobs -pr | xargs -r kill || true
     fi
 }
 
