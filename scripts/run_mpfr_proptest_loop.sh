@@ -23,11 +23,13 @@ run_one() {
     local i="$1"
     local log="$log_dir/run_${i}.log"
     local target_dir=""
+    local -a env_vars=("PROPTEST_CASES=100000")
     if [[ "$runs" -gt 1 ]]; then
         target_dir="$log_dir/target_${i}"
+        env_vars+=("CARGO_TARGET_DIR=$target_dir")
     fi
     echo "=== Run $i/$runs ==="
-    if ! (PROPTEST_CASES=100000 ${target_dir:+CARGO_TARGET_DIR="$target_dir"} "${cmd[@]}" 2>&1 | tee "$log"); then
+    if ! (env "${env_vars[@]}" "${cmd[@]}" 2>&1 | tee "$log"); then
         echo "$i" >> "$fail_file"
         # Stop any in-flight runs as soon as one fails.
         jobs -pr | xargs -r kill || true
