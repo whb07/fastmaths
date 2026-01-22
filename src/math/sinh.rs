@@ -20,23 +20,6 @@ fn div_refine(n: f64, d: f64) -> f64 {
 }
 
 #[inline(always)]
-fn two_sum(a: f64, b: f64) -> (f64, f64) {
-    let s = a + b;
-    let bb = s - a;
-    let err = (a - (s - bb)) + (b - bb);
-    (s, err)
-}
-
-#[inline(always)]
-fn div_dd(nh: f64, nl: f64, dh: f64, dl: f64) -> f64 {
-    let r0 = nh / dh;
-    let p = dh * r0;
-    let e1 = fma_internal(dh, r0, -p);
-    let rem = ((nh - p) - e1) + (nl - r0 * dl);
-    r0 + rem / dh
-}
-
-#[inline(always)]
 pub fn sinh(x: f64) -> f64 {
     let ux = x.to_bits();
     let ax_bits = ux & !SIGN_MASK;
@@ -49,7 +32,6 @@ pub fn sinh(x: f64) -> f64 {
     }
     if ax < SMALL {
         if ax < 1.0 {
-            let t = expm1(ax);
             if ax < 0.5 {
                 let z = ax * ax;
                 let mut p = 1.605_904_383_682_161_3e-10; // 1/6227020800
@@ -61,11 +43,11 @@ pub fn sinh(x: f64) -> f64 {
                 let s = ax + ax * z * p;
                 return if x.is_sign_negative() { -s } else { s };
             }
-            let tt = t * t;
-            let (denom_hi, denom_lo) = two_sum(1.0, t);
-            let tt_err = fma_internal(t, t, -tt);
-            let r = div_dd(tt, tt_err, denom_hi, denom_lo);
-            let s = 0.5 * (2.0 * t - r);
+            let e = exp(ax);
+            let mut inv = 1.0 / e;
+            let err = fma_internal(-inv, e, 1.0);
+            inv += err / e;
+            let s = 0.5 * (e - inv);
             return if x.is_sign_negative() { -s } else { s };
         }
         if ax < 1.5 {
