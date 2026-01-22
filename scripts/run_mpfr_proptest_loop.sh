@@ -7,7 +7,11 @@ parallel="${PARALLEL:-8}"
 
 mkdir -p "$log_dir"
 
-cmd=(cargo test --release --features mpfr)
+mode="${MODE:-release}"
+cmd=(cargo test --features mpfr)
+if [[ "$mode" == "release" ]]; then
+    cmd=(cargo test --release --features mpfr)
+fi
 fail_file="$(mktemp)"
 
 cleanup() {
