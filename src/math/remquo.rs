@@ -92,27 +92,28 @@ pub fn remquo(x: f64, y: f64) -> (f64, i32) {
     }
 
     if ax != 0 && ay != 0 {
+        let sign_y = if (hy & SIGN_MASK) != 0 { -1i64 } else { 1i64 };
+        let ay_f = f64_from_bits(ay);
         let t = x / y;
         if t.is_finite() && t.abs() < 4_503_599_627_370_496.0 {
             let n = rint(t);
             let mut n_i = n as i64;
             let mut r = fma_internal(-n, y, x);
-            let ayh = 0.5 * f64_from_bits(ay);
+            let ayh = 0.5 * ay_f;
             if r > ayh {
-                r -= y;
-                n_i += 1;
+                r -= (sign_y as f64) * y;
+                n_i += sign_y;
             } else if r < -ayh {
-                r += y;
-                n_i -= 1;
-            } else if r == ayh {
-                if (n_i & 1) != 0 {
-                    r -= y;
-                    n_i += 1;
-                }
-            } else if r == -ayh {
-                if (n_i & 1) != 0 {
-                    r += y;
-                    n_i -= 1;
+                r += (sign_y as f64) * y;
+                n_i -= sign_y;
+            }
+            if r == ayh || r == -ayh {
+                let want_odd = (quotient_mod8(ax0, ay0) & 1) != 0;
+                let is_odd = (n_i.abs() & 1) != 0;
+                if want_odd != is_odd {
+                    let delta = if r > 0.0 { sign_y } else { -sign_y };
+                    r -= (delta as f64) * y;
+                    n_i += delta;
                 }
             }
             let mut q = (n_i.abs() & 0x7) as i32;
