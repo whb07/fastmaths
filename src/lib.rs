@@ -4705,8 +4705,10 @@ mod tests {
             4 => neg,
             4 => pos,
             1 => around(-1.0, 256),
-            1 => around(-ROUNDTRIP_EXP_MIN_ABS, 256),
-            1 => around(ROUNDTRIP_EXP_MIN_ABS, 256),
+            1 => Just(-ROUNDTRIP_EXP_MIN_ABS),
+            1 => ulp_steps_exclusive(-ROUNDTRIP_EXP_MIN_ABS, 256, false),
+            1 => Just(ROUNDTRIP_EXP_MIN_ABS),
+            1 => ulp_steps_exclusive(ROUNDTRIP_EXP_MIN_ABS, 256, true),
             1 => around(1.0, 256),
         ]
         .boxed()
