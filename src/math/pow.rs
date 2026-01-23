@@ -463,6 +463,12 @@ fn dd_mul(a_hi: f64, a_lo: f64, b_hi: f64, b_lo: f64) -> (f64, f64) {
 
 #[inline]
 fn dd_recip(a_hi: f64, a_lo: f64) -> f64 {
+    if a_hi == 0.0 {
+        if a_lo == 0.0 {
+            return f64::INFINITY;
+        }
+        return 1.0 / a_lo;
+    }
     // Newton refinement of reciprocal using double-double product.
     let mut r = 1.0 / a_hi;
     for _ in 0..2 {
