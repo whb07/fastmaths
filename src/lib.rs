@@ -9,6 +9,7 @@ pub use self::math::*;
 
 #[cfg(test)]
 mod tests {
+    use crate as fastmaths;
     use libloading::Library;
     #[cfg(feature = "mpfr")]
     use rug::{Float, ops::Pow};
