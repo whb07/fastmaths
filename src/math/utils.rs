@@ -31,3 +31,13 @@ pub(crate) fn fasttwosum(x: f64, y: f64, e: &mut f64) -> f64 {
 pub(crate) fn roundeven_finite(x: f64) -> f64 {
     rint(x)
 }
+
+#[inline(always)]
+pub(crate) fn asdouble(x: u64) -> f64 {
+    f64::from_bits(x)
+}
+
+#[inline(always)]
+pub(crate) fn fma_wrap(a: f64, b: f64, c: f64) -> f64 {
+    super::fma_internal(a, b, c)
+}
