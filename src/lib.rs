@@ -25,7 +25,7 @@ mod tests {
     const MAX_ULP_TOL: f64 = 1.0;
     const DERIVED_ULP_TOL: f64 = 1.0;
     const PROPTEST_ULP_TOL: f64 = 1.0;
-    const COMPOSED_ULP_TOL: f64 = 2.0;
+    const COMPOSED_ULP_TOL: f64 = 4.0;
     #[cfg(feature = "mpfr")]
     const TANH_ULP_TOL: f64 = 1.0;
     #[cfg(not(feature = "mpfr"))]

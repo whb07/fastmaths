@@ -4,7 +4,7 @@
 //! to exp(y*log(x)) for the general case. Uses ln/exp cores with split constants
 //! for accuracy.
 
-use super::{f64_from_bits, f64_to_bits, fma_internal};
+use super::{f64_from_bits, f64_to_bits, fma_internal, ln};
 
 const POW_LOG_TABLE_BITS: u32 = 7;
 const POW_LOG_N: u64 = 1u64 << POW_LOG_TABLE_BITS;
@@ -13,6 +13,7 @@ const SIGN_BIT: u64 = 0x8000_0000_0000_0000u64;
 
 const POW_LOG_LN2_HI: f64 = f64::from_bits(0x3fe6_2e42_fefa_3800);
 const POW_LOG_LN2_LO: f64 = f64::from_bits(0x3d2e_f357_93c7_6730);
+const POW_OVERFLOW_LOG: f64 = 709.782_712_893_384;
 const POW_LOG_A: [f64; 7] = [
     f64::from_bits(0xbfe0_0000_0000_0000),
     f64::from_bits(0xbfe5_5555_5555_5560),
@@ -452,6 +453,9 @@ fn classify_integer(x: f64) -> (bool, bool) {
 #[inline]
 fn dd_mul(a_hi: f64, a_lo: f64, b_hi: f64, b_lo: f64) -> (f64, f64) {
     let p = a_hi * b_hi;
+    if !p.is_finite() || !a_hi.is_finite() || !b_hi.is_finite() {
+        return (p, 0.0);
+    }
     let e = fma_internal(a_hi, b_hi, -p) + (a_hi * b_lo + a_lo * b_hi) + (a_lo * b_lo);
     let hi = p + e;
     let lo = (p - hi) + e;
@@ -715,7 +719,15 @@ pub fn pow(x: f64, y: f64) -> f64 {
     let ax = -x;
     let y_abs = y.abs();
     if y_abs < (1u64 << 53) as f64 {
-        let res = powi(ax, y as i64);
+        let yi = y as i64;
+        if yi < 0 && ax > 1.0 {
+            let log_ax = ln(ax);
+            if log_ax * (-y) > POW_OVERFLOW_LOG {
+                let res = pow_exp(ax, y);
+                return apply_sign(res, sign_neg);
+            }
+        }
+        let res = powi(ax, yi);
         return apply_sign(res, sign_neg);
     }
 
