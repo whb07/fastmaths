@@ -4,7 +4,7 @@
 //! and handles overflow for large inputs. Coefficients and thresholds mirror
 //! fdlibm/glibc strategies.
 
-use super::{exp, expm1, fma_internal};
+use super::{exp, expm1, fma_internal, two_sum};
 
 const TINY: f64 = 3.725_290_298_461_914e-09; // 2^-28
 const EXP_HI: f64 = 709.782_712_893_384;
@@ -14,14 +14,6 @@ const LN2_LO: f64 = f64::from_bits(0x3d2e_f357_93c7_6730);
 const SMALL: f64 = 22.0;
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;
 const EXP_MASK: u64 = 0x7ff0_0000_0000_0000u64;
-
-#[inline(always)]
-fn two_sum(a: f64, b: f64) -> (f64, f64) {
-    let s = a + b;
-    let bb = s - a;
-    let err = (a - (s - bb)) + (b - bb);
-    (s, err)
-}
 
 #[inline(always)]
 pub fn sinh(x: f64) -> f64 {
