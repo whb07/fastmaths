@@ -12,6 +12,7 @@ const POW_LOG_OFF: u64 = 0x3fe6_9555_0000_0000u64;
 const SIGN_BIT: u64 = 0x8000_0000_0000_0000u64;
 
 const POW_OVERFLOW_LOG: f64 = 709.782_712_893_384;
+const POWI_EXP_CUTOFF: i64 = 64;
 const POW_LOG_A: [f64; 7] = [
     f64::from_bits(0xbfe0_0000_0000_0000),
     f64::from_bits(0xbfe5_5555_5555_5560),
@@ -460,6 +461,19 @@ fn dd_mul(a_hi: f64, a_lo: f64, b_hi: f64, b_lo: f64) -> (f64, f64) {
     (hi, lo)
 }
 
+#[inline]
+fn dd_recip(a_hi: f64, a_lo: f64) -> f64 {
+    // Newton refinement of reciprocal using double-double product.
+    let mut r = 1.0 / a_hi;
+    for _ in 0..2 {
+        let (p_hi, p_lo) = dd_mul(a_hi, a_lo, r, 0.0);
+        let mut err = fma_internal(-p_hi, 1.0, 1.0);
+        err -= p_lo;
+        r = r + r * err;
+    }
+    r
+}
+
 fn powi(base: f64, mut exp: i64) -> f64 {
     if exp == 0 {
         return 1.0;
@@ -484,8 +498,11 @@ fn powi(base: f64, mut exp: i64) -> f64 {
         b_lo = lo;
         e >>= 1;
     }
-    let res = acc_hi + acc_lo;
-    if neg { 1.0 / res } else { res }
+    if !neg {
+        return acc_hi + acc_lo;
+    }
+
+    dd_recip(acc_hi, acc_lo)
 }
 
 #[inline]
@@ -718,6 +735,10 @@ pub fn pow(x: f64, y: f64) -> f64 {
     let y_abs = y.abs();
     if y_abs < (1u64 << 53) as f64 {
         let yi = y as i64;
+        if yi.abs() > POWI_EXP_CUTOFF {
+            let res = pow_exp(ax, y);
+            return apply_sign(res, sign_neg);
+        }
         if yi < 0 && ax > 1.0 {
             let log_ax = ln(ax);
             if log_ax * (-y) > POW_OVERFLOW_LOG {
