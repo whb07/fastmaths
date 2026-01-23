@@ -8,6 +8,9 @@ use super::{exp, expm1, fma_internal};
 
 const TINY: f64 = 3.725_290_298_461_914e-09; // 2^-28
 const EXP_HI: f64 = 709.782_712_893_384;
+const SINH_OVERFLOW: f64 = 710.475_860_073_943_9;
+const LN2_HI: f64 = f64::from_bits(0x3fe6_2e42_fefa_3800);
+const LN2_LO: f64 = f64::from_bits(0x3d2e_f357_93c7_6730);
 const SMALL: f64 = 22.0;
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;
 const EXP_MASK: u64 = 0x7ff0_0000_0000_0000u64;
@@ -53,9 +56,13 @@ pub fn sinh(x: f64) -> f64 {
         let s = fma_internal(0.5, sum_hi, 0.5 * (sum_lo + q_err));
         return if x.is_sign_negative() { -s } else { s };
     }
-    if ax < EXP_HI {
+    if ax <= EXP_HI {
         let e = exp(ax);
         let s = 0.5 * e;
+        return if x.is_sign_negative() { -s } else { s };
+    }
+    if ax <= SINH_OVERFLOW {
+        let s = super::exp::exp_with_tail_generic(ax - LN2_HI, -LN2_LO);
         return if x.is_sign_negative() { -s } else { s };
     }
     if x.is_sign_negative() {

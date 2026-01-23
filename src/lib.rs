@@ -4200,6 +4200,22 @@ mod tests {
             .boxed()
     }
 
+    fn ulp_steps_exclusive(value: f64, max_steps: u32, toward_positive: bool) -> BoxedStrategy<f64> {
+        (1u32..=max_steps)
+            .prop_map(move |steps| {
+                let mut v = value;
+                for _ in 0..steps {
+                    v = if toward_positive {
+                        v.next_up()
+                    } else {
+                        v.next_down()
+                    };
+                }
+                v
+            })
+            .boxed()
+    }
+
     fn around(value: f64, max_steps: u32) -> BoxedStrategy<f64> {
         prop_oneof![
             1 => Just(value),
@@ -4215,6 +4231,31 @@ mod tests {
             1 => around(-value, max_steps),
         ]
         .boxed()
+    }
+
+    fn around_signed_below(value: f64, max_steps: u32) -> BoxedStrategy<f64> {
+        prop_oneof![
+            1 => ulp_steps_exclusive(value, max_steps, false),
+            1 => ulp_steps_exclusive(-value, max_steps, true),
+        ]
+        .boxed()
+    }
+
+    fn clamp_below_sinh_overflow(x: f64) -> f64 {
+        if !x.is_finite() || x.abs() >= SINH_OVERFLOW {
+            let edge = SINH_OVERFLOW.next_down();
+            return if x.is_sign_negative() { -edge } else { edge };
+        }
+        x
+    }
+
+    fn tiny_signed_below_tiny() -> BoxedStrategy<f64> {
+        (29u32..=TINY_MAX_POW, any::<bool>())
+            .prop_map(|(k, neg)| {
+                let x = 2.0f64.powi(-(k as i32));
+                if neg { -x } else { x }
+            })
+            .boxed()
     }
 
     fn tagged_f64<S>(label: &'static str, strat: S) -> BoxedStrategy<(f64, &'static str)>
@@ -4710,6 +4751,62 @@ mod tests {
         .boxed()
     }
 
+    fn ptest_sinh_nonneg_inputs() -> BoxedStrategy<f64> {
+        let mid = range_with_edges(0.0, 100.0);
+        let thresholds = prop_oneof![
+            2 => around(3.725_290_298_461_914e-09, 256),
+            2 => around(0.5, 256),
+            2 => around(1.0, 256),
+            2 => around(22.0, 256),
+            2 => around(EXP_OVERFLOW, 256),
+            2 => around_signed_below(SINH_OVERFLOW, 256),
+        ];
+        let tiny = prop_oneof![
+            2 => tiny_positive(),
+            2 => subnormal_pos_f64(),
+            1 => Just(0.0),
+        ];
+        let wide = prop_oneof![
+            2 => normal_pos_f64_with_exp(-20, 9),
+            1 => normal_pos_f64_with_exp(10, 10),
+        ];
+        prop_oneof![
+            4 => mid,
+            4 => thresholds,
+            2 => tiny,
+            1 => wide,
+        ]
+        .boxed()
+    }
+
+    fn ptest_sinh_below_overflow_inputs() -> BoxedStrategy<f64> {
+        let mid = range_with_edges(-100.0, 100.0);
+        let thresholds = prop_oneof![
+            2 => around_signed(3.725_290_298_461_914e-09, 256),
+            2 => around_signed(0.5, 256),
+            2 => around_signed(1.0, 256),
+            2 => around_signed(22.0, 256),
+            2 => around_signed(EXP_OVERFLOW, 256),
+            2 => around_signed_below(SINH_OVERFLOW, 512),
+        ];
+        let tiny = prop_oneof![
+            2 => tiny_signed(),
+            2 => subnormal_f64(),
+            1 => Just(0.0),
+            1 => Just(-0.0),
+        ];
+        let wide = (any::<bool>(), normal_pos_f64_with_exp(-20, 9))
+            .prop_map(|(neg, val)| if neg { -val } else { val })
+            .boxed();
+        prop_oneof![
+            4 => mid,
+            4 => thresholds,
+            2 => tiny,
+            1 => wide,
+        ]
+        .prop_map(clamp_below_sinh_overflow)
+        .boxed()
+    }
     fn ptest_cosh_inputs() -> BoxedStrategy<f64> {
         range_with_edges(-100.0, 100.0)
     }
@@ -5367,8 +5464,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_sinh_monotonic_nonneg(x in ptest_sinh_inputs()) {
-            prop_assume!(x.is_finite() && x >= 0.0);
+        fn ptest_sinh_monotonic_nonneg(x in ptest_sinh_nonneg_inputs()) {
             let x2 = x.next_up();
             prop_assume!(x2.is_finite());
             let s1 = fastlibm::sinh(x);
@@ -5382,8 +5478,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_sinh_no_premature_overflow(x in ptest_sinh_inputs()) {
-            prop_assume!(x.is_finite() && x.abs() < SINH_OVERFLOW);
+        fn ptest_sinh_no_premature_overflow(x in ptest_sinh_below_overflow_inputs()) {
             let s = fastlibm::sinh(x);
             assert!(
                 s.is_finite(),
@@ -5393,8 +5488,7 @@ mod tests {
         }
 
         #[test]
-        fn ptest_sinh_tiny_exact(x in tiny_signed()) {
-            prop_assume!(x.is_finite() && x.abs() < 3.725_290_298_461_914e-09);
+        fn ptest_sinh_tiny_exact(x in tiny_signed_below_tiny()) {
             let s = fastlibm::sinh(x);
             assert_eq!(
                 s.to_bits(),
