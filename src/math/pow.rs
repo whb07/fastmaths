@@ -471,6 +471,12 @@ fn dd_recip(a_hi: f64, a_lo: f64) -> f64 {
     }
     // Newton refinement of reciprocal using double-double product.
     let mut r = 1.0 / a_hi;
+    // For very small a_hi, the naive reciprocal can overflow to inf and the
+    // Newton step would turn into inf + (-inf) = NaN. In that regime the true
+    // reciprocal overflows too (a_lo is only a tiny correction), so return +inf.
+    if !r.is_finite() {
+        return f64::INFINITY;
+    }
     for _ in 0..2 {
         let (p_hi, p_lo) = dd_mul(a_hi, a_lo, r, 0.0);
         let mut err = fma_internal(-p_hi, 1.0, 1.0);

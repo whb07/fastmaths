@@ -4,34 +4,25 @@
 //! switches to exp(x)-1 for larger magnitudes. Polynomial degree and constants
 //! match fdlibm/glibc style minimax fits.
 
-use super::{LN2_HI, LN2_LO, fma_internal, hi_word, lo_word, with_hi_lo};
+use super::{LN2_HI, LN2_LO, hi_word, lo_word, with_hi_lo};
 
 const ONE: f64 = 1.0;
 const HUGE: f64 = 1.0e300;
 const TINY: f64 = 1.0e-300;
-const O_THRESHOLD: f64 = 7.097_827_128_933_839_730_96e+02;
-const INVLN2: f64 = core::f64::consts::LOG2_E;
-const SMALL_X: f64 = 0.007_812_5; // 2^-7
+const O_THRESHOLD: f64 = f64::from_bits(0x4086_2e42_fefa_39ef);
+const INVLN2: f64 = f64::from_bits(0x3ff7_1547_652b_82fe);
 const Q: [f64; 6] = [
     1.0,
-    -3.333_333_333_333_313_164_28e-02,
-    1.587_301_587_254_814_601_65e-03,
-    -7.936_507_578_674_879_424_73e-05,
-    4.008_217_827_329_362_395_52e-06,
-    -2.010_992_181_836_243_713_26e-07,
+    f64::from_bits(0xbfa1_1111_1111_10f4),
+    f64::from_bits(0x3f5a_01a0_19fe_5585),
+    f64::from_bits(0xbf14_ce19_9eaa_dbb7),
+    f64::from_bits(0x3ed0_cfca_86e6_5239),
+    f64::from_bits(0xbe8a_fdb7_6e09_c32d),
 ];
 
 #[inline(always)]
 fn set_high_word(x: f64, hi: u32) -> f64 {
     with_hi_lo(hi, lo_word(x))
-}
-
-#[inline(always)]
-fn expm1_small(x: f64) -> f64 {
-    // x + x^2/2 + x^3/6 + x^4/24 + x^5/120 + x^6/720
-    let x2 = x * x;
-    let poly = 0.5 + x * (1.0 / 6.0 + x * (1.0 / 24.0 + x * (1.0 / 120.0 + x * (1.0 / 720.0))));
-    x + x2 * poly
 }
 
 #[inline(always)]
@@ -60,10 +51,6 @@ fn expm1_generic(mut x: f64) -> f64 {
             return TINY - ONE;
         }
     }
-    if hx < 0x3f80_0000 {
-        return expm1_small(x);
-    }
-
     let mut k = 0i32;
     let mut c = 0.0;
 
@@ -90,14 +77,15 @@ fn expm1_generic(mut x: f64) -> f64 {
 
     let hfx = 0.5 * x;
     let hxs = x * hfx;
-    let r1 = fma_internal(hxs, Q[1], ONE);
+    // Keep evaluation order aligned with fdlibm/glibc to avoid
+    // cross-libm rounding deltas from fused operations.
+    let r1 = ONE + hxs * Q[1];
     let h2 = hxs * hxs;
-    let r2 = fma_internal(hxs, Q[3], Q[2]);
+    let r2 = Q[2] + hxs * Q[3];
     let h4 = h2 * h2;
-    let r3 = fma_internal(hxs, Q[5], Q[4]);
-    let r1 = fma_internal(h2, r2, r1);
-    let r1 = fma_internal(h4, r3, r1);
-    let t = fma_internal(r1, -hfx, 3.0);
+    let r3 = Q[4] + hxs * Q[5];
+    let r1 = (r1 + h2 * r2) + h4 * r3;
+    let t = 3.0 - r1 * hfx;
     let mut e = hxs * ((r1 - t) / (6.0 - x * t));
 
     if k == 0 {
@@ -171,10 +159,6 @@ unsafe fn expm1_fma(mut x: f64) -> f64 {
             return TINY - ONE;
         }
     }
-    if hx < 0x3f80_0000 {
-        return expm1_small(x);
-    }
-
     let mut k = 0i32;
     let mut c = 0.0;
 
@@ -208,7 +192,7 @@ unsafe fn expm1_fma(mut x: f64) -> f64 {
     let r3 = unsafe { fma_f64(hxs, Q[5], Q[4]) };
     let r1 = unsafe { fma_f64(h2, r2, r1) };
     let r1 = unsafe { fma_f64(h4, r3, r1) };
-    let t = 3.0 - r1 * hfx;
+    let t = unsafe { fma_f64(r1, -hfx, 3.0) };
     let mut e = hxs * ((r1 - t) / (6.0 - x * t));
 
     if k == 0 {
