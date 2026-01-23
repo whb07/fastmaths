@@ -3,7 +3,22 @@ set -euo pipefail
 
 runs="${1:-10}"
 log_dir="${LOG_DIR:-proptest-runs}"
-parallel="${PARALLEL:-8}"
+if [[ -n "${PARALLEL:-}" ]]; then
+    parallel="$PARALLEL"
+else
+    if command -v nproc >/dev/null 2>&1; then
+        cpu_count="$(nproc)"
+    else
+        cpu_count="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
+    fi
+    if [[ "$cpu_count" -lt 1 ]]; then
+        cpu_count=1
+    fi
+    parallel="$((cpu_count / 2))"
+    if [[ "$parallel" -lt 1 ]]; then
+        parallel=1
+    fi
+fi
 proptest_cases="${PROPTEST_CASES:-100000}"
 
 mkdir -p "$log_dir"
@@ -26,7 +41,15 @@ cleanup() {
 trap cleanup INT TERM EXIT
 
 echo "Building test binaries (mode=$mode)..."
-"${build_cmd[@]}" | tee "$build_log"
+if ! "${build_cmd[@]}" >"$build_log" 2>&1; then
+    echo "Build failed. Showing errors from $build_log:" >&2
+    if command -v rg >/dev/null 2>&1; then
+        rg -n -C 2 "error:|error\\[" "$build_log" || true
+    else
+        tail -n 200 "$build_log" || true
+    fi
+    exit 1
+fi
 
 mapfile -t test_bins < <(
     python3 - "$build_log" <<'PY'
