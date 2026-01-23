@@ -4,30 +4,12 @@
 //! double-double arithmetic for correctly rounded results (<= 1 ULP).
 //! Constants and tables are sourced from glibc/core-math (see glibc/).
 
-use super::{asdouble, copysign, floor, fma_internal, ldexp, roundeven_finite};
+use super::{
+    asdouble, copysign, fasttwosum, floor, fma_internal, ldexp, roundeven_finite, two_sum,
+};
 use super::{erf_data, erfc_data};
 
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
-
-// Add a + b, such that *hi + *lo approximates a + b (|a| >= |b|).
-#[inline(always)]
-fn fast_two_sum(hi: &mut f64, lo: &mut f64, a: f64, b: f64) {
-    let s = a + b;
-    let e = s - a;
-    *hi = s;
-    *lo = b - e;
-}
-
-#[inline(always)]
-fn two_sum(hi: &mut f64, lo: &mut f64, a: f64, b: f64) {
-    let s = a + b;
-    let aa = s - b;
-    let bb = s - aa;
-    let da = a - aa;
-    let db = b - bb;
-    *hi = s;
-    *lo = da + db;
-}
 
 // Multiply exactly a and b, such that *hi + *lo = a * b.
 #[inline(always)]
@@ -54,7 +36,7 @@ fn d_mul(hi: &mut f64, lo: &mut f64, ah: f64, al: f64, bh: f64, bl: f64) {
 // Add a + (bh + bl), assuming |a| >= |bh|.
 #[inline(always)]
 fn fast_sum(hi: &mut f64, lo: &mut f64, a: f64, bh: f64, bl: f64) {
-    fast_two_sum(hi, lo, a, bh);
+    *hi = fasttwosum(a, bh, lo);
     *lo += bl;
 }
 
@@ -72,12 +54,12 @@ fn cr_erf_fast(h: &mut f64, l: &mut f64, mut z: f64) -> f64 {
         let mut th = 0.0;
         let mut tl = 0.0;
         a_mul(&mut th, &mut tl, z2h, c5);
-        fast_two_sum(h, l, erf_data::C0[2], th);
+        *h = fasttwosum(erf_data::C0[2], th, l);
         *l += tl + erf_data::C0[3];
         let h_copy = *h;
         a_mul(&mut th, &mut tl, z2h, *h);
         tl += fma_internal(z2h, *l, erf_data::C0[1]);
-        fast_two_sum(h, l, erf_data::C0[0], th);
+        *h = fasttwosum(erf_data::C0[0], th, l);
         *l += fma_internal(z2l, h_copy, tl);
         a_mul(h, &mut tl, *h, z);
         *l = fma_internal(*l, z, tl);
@@ -93,30 +75,28 @@ fn cr_erf_fast(h: &mut f64, l: &mut f64, mut z: f64) -> f64 {
     let c9 = fma_internal(c[12], z, c[11]);
     let c7 = fma_internal(c[10], z, c[9]);
     let c5 = fma_internal(c[8], z, c[7]);
-    let mut c3h = 0.0;
     let mut c3l = 0.0;
-    fast_two_sum(&mut c3h, &mut c3l, c[5], z * c[6]);
+    let mut c3h = fasttwosum(c[5], z * c[6], &mut c3l);
     let c7 = fma_internal(c9, z2, c7);
     let mut tl = 0.0;
     let c3h0 = c3h;
-    fast_two_sum(&mut c3h, &mut tl, c3h0, c5 * z2);
+    c3h = fasttwosum(c3h0, c5 * z2, &mut tl);
     c3l += tl;
     let c3h1 = c3h;
-    fast_two_sum(&mut c3h, &mut tl, c3h1, c7 * z4);
+    c3h = fasttwosum(c3h1, c7 * z4, &mut tl);
     c3l += tl;
     let mut th = 0.0;
     let mut tl2 = 0.0;
     a_mul(&mut th, &mut tl2, z, c3h);
-    let mut c2h = 0.0;
     let mut c2l = 0.0;
-    fast_two_sum(&mut c2h, &mut c2l, c[4], th);
+    let c2h = fasttwosum(c[4], th, &mut c2l);
     c2l += fma_internal(z, c3l, tl2);
     a_mul(&mut th, &mut tl2, z, c2h);
-    fast_two_sum(h, l, c[2], th);
+    *h = fasttwosum(c[2], th, l);
     *l += tl2 + fma_internal(z, c2l, c[3]);
     a_mul(&mut th, &mut tl2, z, *h);
     tl2 = fma_internal(z, *l, tl2);
-    fast_two_sum(h, l, c[0], th);
+    *h = fasttwosum(c[0], th, l);
     *l += tl2 + c[1];
     f64::from_bits(0x3ba1100000000000)
 }
@@ -154,7 +134,7 @@ fn cr_erf_accurate_tiny(h: &mut f64, l: &mut f64, z: f64, exceptions: bool) {
         tl = fma_internal(*l, z, tl);
         a_mul(h, l, th, z);
         *l = fma_internal(tl, z, *l);
-        fast_two_sum(h, &mut tl, erf_data::P[a / 2 + 4], *h);
+        *h = fasttwosum(erf_data::P[a / 2 + 4], *h, &mut tl);
         *l += tl;
     }
     for a in (1..=7).rev().step_by(2) {
@@ -162,7 +142,7 @@ fn cr_erf_accurate_tiny(h: &mut f64, l: &mut f64, z: f64, exceptions: bool) {
         tl = fma_internal(*l, z, tl);
         a_mul(h, l, th, z);
         *l = fma_internal(tl, z, *l);
-        fast_two_sum(h, &mut tl, erf_data::P[a - 1], *h);
+        *h = fasttwosum(erf_data::P[a - 1], *h, &mut tl);
         *l += erf_data::P[a] + tl;
     }
     a_mul(h, &mut tl, *h, z);
@@ -198,13 +178,17 @@ fn cr_erf_accurate(h: &mut f64, l: &mut f64, z: f64) {
     for j in (8..=10).rev() {
         a_mul(&mut th, &mut tl, *h, zz);
         tl = fma_internal(*l, zz, tl);
-        two_sum(h, l, p[8 + j], th);
+        let (sum, err) = two_sum(p[8 + j], th);
+        *h = sum;
+        *l = err;
         *l += tl;
     }
     for j in (0..=7).rev() {
         a_mul(&mut th, &mut tl, *h, zz);
         tl = fma_internal(*l, zz, tl);
-        two_sum(h, l, p[2 * j], th);
+        let (sum, err) = two_sum(p[2 * j], th);
+        *h = sum;
+        *l = err;
         *l += p[2 * j + 1] + tl;
     }
 }
@@ -262,7 +246,7 @@ fn q_1(hi: &mut f64, lo: &mut f64, zh: f64, zl: f64) {
     let z = zh + zl;
     let mut q = fma_internal(erf_data::Q_1[4], zh, erf_data::Q_1[3]);
     q = fma_internal(q, z, erf_data::Q_1[2]);
-    fast_two_sum(hi, lo, erf_data::Q_1[1], q * z);
+    *hi = fasttwosum(erf_data::Q_1[1], q * z, lo);
     d_mul(hi, lo, zh, zl, *hi, *lo);
     fast_sum(hi, lo, erf_data::Q_1[0], *hi, *lo);
 }
@@ -277,9 +261,8 @@ fn exp_1(hi: &mut f64, lo: &mut f64, xh: f64, xl: f64) {
     let mut kh = 0.0;
     let mut kl = 0.0;
     s_mul(&mut kh, &mut kl, k, LOG2H, LOG2L);
-    let mut yh = 0.0;
     let mut yl = 0.0;
-    fast_two_sum(&mut yh, &mut yl, xh - kh, xl);
+    let yh = fasttwosum(xh - kh, xl, &mut yl);
     yl -= kl;
     let k_i = k as i64;
     let m = (k_i >> 12) + 0x3ff;
@@ -309,12 +292,10 @@ fn exp_accurate(h: &mut f64, l: &mut f64, e: &mut i32, xh: f64, xl: f64) {
     const LOG2L: f64 = f64::from_bits(0x3c7abc9e3b398000);
     const LOG2T: f64 = f64::from_bits(0x398f97b57a079a19);
     let mut yh = fma_internal(-(k as f64), LOG2H, xh);
-    let mut th = 0.0;
-    let mut tl = 0.0;
-    two_sum(&mut th, &mut tl, -(k as f64) * LOG2L, xl);
+    let (mut th, mut tl) = two_sum(-(k as f64) * LOG2L, xl);
     let mut yl = 0.0;
     let yh0 = yh;
-    fast_two_sum(&mut yh, &mut yl, yh0, th);
+    yh = fasttwosum(yh0, th, &mut yl);
     yl = fma_internal(-(k as f64), LOG2T, yl + tl);
     *h = erfc_data::E2[19 + 8];
     for i in (16..=18).rev() {
@@ -322,20 +303,20 @@ fn exp_accurate(h: &mut f64, l: &mut f64, e: &mut i32, xh: f64, xl: f64) {
     }
     a_mul(&mut th, &mut tl, *h, yh);
     tl = fma_internal(*h, yl, tl);
-    fast_two_sum(h, l, erfc_data::E2[15 + 8], th);
+    *h = fasttwosum(erfc_data::E2[15 + 8], th, l);
     *l += tl;
     for i in (8..=14).rev() {
         a_mul(&mut th, &mut tl, *h, yh);
         tl = fma_internal(*h, yl, tl);
         tl = fma_internal(*l, yh, tl);
-        fast_two_sum(h, l, erfc_data::E2[i + 8], th);
+        *h = fasttwosum(erfc_data::E2[i + 8], th, l);
         *l += tl;
     }
     for i in (0..=7).rev() {
         a_mul(&mut th, &mut tl, *h, yh);
         tl = fma_internal(*h, yl, tl);
         tl = fma_internal(*l, yh, tl);
-        fast_two_sum(h, l, erfc_data::E2[2 * i], th);
+        *h = fasttwosum(erfc_data::E2[2 * i], th, l);
         *l += tl + erfc_data::E2[2 * i + 1];
     }
     *e = k;
@@ -377,15 +358,15 @@ fn erfc_asympt_fast(h: &mut f64, l: &mut f64, x: f64) -> f64 {
     zh = fma_internal(zh, uh, p[10]);
     s_mul(h, l, zh, uh, ul);
     let mut zl = 0.0;
-    fast_two_sum(&mut zh, &mut zl, p[9], *h);
+    zh = fasttwosum(p[9], *h, &mut zl);
     zl += *l;
     for j in (3usize..=15).rev().step_by(2) {
         d_mul(h, l, zh, zl, uh, ul);
-        fast_two_sum(&mut zh, &mut zl, p[j.div_ceil(2)], *h);
+        zh = fasttwosum(p[j.div_ceil(2)], *h, &mut zl);
         zl += *l;
     }
     d_mul(h, l, zh, zl, uh, ul);
-    fast_two_sum(&mut zh, &mut zl, p[0], *h);
+    zh = fasttwosum(p[0], *h, &mut zl);
     zl += *l + p[1];
     d_mul(&mut uh, &mut ul, zh, zl, yh, yl);
     d_mul(h, l, uh, ul, eh, el);
@@ -401,7 +382,7 @@ fn cr_erfc_fast(h: &mut f64, l: &mut f64, x: f64) -> f64 {
         let mut err = cr_erf_fast(h, l, -x);
         err *= *h;
         let mut t = 0.0;
-        fast_two_sum(h, &mut t, 1.0, *h);
+        *h = fasttwosum(1.0, *h, &mut t);
         *l += t;
         return err + f64::from_bits(0x3994000000000000);
     }
@@ -410,7 +391,7 @@ fn cr_erfc_fast(h: &mut f64, l: &mut f64, x: f64) -> f64 {
         let mut err = cr_erf_fast(h, l, x);
         err *= *h;
         let mut t = 0.0;
-        fast_two_sum(h, &mut t, 1.0, -*h);
+        *h = fasttwosum(1.0, -*h, &mut t);
         *l = t - *l;
         if x >= f64::from_bits(0x3fde861fbb24c00a) {
             return err;
@@ -476,7 +457,9 @@ fn erfc_asympt_accurate(x: f64) -> f64 {
         a_mul(&mut th, &mut tl, zh, uh);
         tl = fma_internal(zh, ul, tl);
         tl = fma_internal(zl, uh, tl);
-        two_sum(&mut zh, &mut zl, p[((j - 1) / 2) as usize + 6], th);
+        let (sum, err) = two_sum(p[((j - 1) / 2) as usize + 6], th);
+        zh = sum;
+        zl = err;
         zl += tl;
         j -= 2;
     }
@@ -485,7 +468,9 @@ fn erfc_asympt_accurate(x: f64) -> f64 {
         a_mul(&mut th, &mut tl, zh, uh);
         tl = fma_internal(zh, ul, tl);
         tl = fma_internal(zl, uh, tl);
-        two_sum(&mut zh, &mut zl, p[(j2 - 1) as usize], th);
+        let (sum, err) = two_sum(p[(j2 - 1) as usize], th);
+        zh = sum;
+        zl = err;
         zl += tl + p[j2 as usize];
         j2 -= 2;
     }
@@ -494,7 +479,7 @@ fn erfc_asympt_accurate(x: f64) -> f64 {
     ul = fma_internal(zl, yh, ul);
     let uh0 = uh;
     let ul0 = ul;
-    fast_two_sum(&mut uh, &mut ul, uh0, ul0);
+    uh = fasttwosum(uh0, ul0, &mut ul);
     a_mul(&mut h, &mut l, uh, eh);
     l = fma_internal(uh, el, l);
     l = fma_internal(ul, eh, l);
@@ -521,7 +506,7 @@ fn cr_erfc_accurate(x: f64) -> f64 {
         }
         cr_erf_accurate(&mut h, &mut l, -x);
         let h0 = h;
-        fast_two_sum(&mut h, &mut t, 1.0, h0);
+        h = fasttwosum(1.0, h0, &mut t);
         l += t;
         return h + l;
     }
@@ -533,7 +518,7 @@ fn cr_erfc_accurate(x: f64) -> f64 {
         }
         cr_erf_accurate(&mut h, &mut l, x);
         let h0 = h;
-        fast_two_sum(&mut h, &mut t, 1.0, -h0);
+        h = fasttwosum(1.0, -h0, &mut t);
         l = t - l;
         return h + l;
     }
