@@ -32,11 +32,6 @@ const EPS_X4: f64 = f64::from_bits(0x3cad_0000_0000_0000); // 0x1.dp-53
 const EPS_TINY: f64 = f64::from_bits(0x3980_0000_0000_0000); // 0x1p-103
 
 #[inline(always)]
-fn asuint64(x: f64) -> u64 {
-    x.to_bits()
-}
-
-#[inline(always)]
 fn muldd_acc(xh: f64, xl: f64, ch: f64, cl: f64, l: &mut f64) -> f64 {
     let ahlh = ch * xl;
     let alhh = cl * xh;
@@ -96,9 +91,9 @@ fn as_atanh_zero(x: f64) -> f64 {
     let y0 = fasttwosum(x, y1, &mut y1e);
     let mut y2e = 0.0;
     let mut y1h = fasttwosum(y1e, y2v, &mut y2e);
-    let mut t = asuint64(y1h);
+    let mut t = (y1h).to_bits();
     if (t & (!0u64 >> 12)) == 0 {
-        let w = asuint64(y2e);
+        let w = (y2e).to_bits();
         if ((w ^ t) >> 63) != 0 {
             t = t.wrapping_sub(1);
         } else {
@@ -112,7 +107,7 @@ fn as_atanh_zero(x: f64) -> f64 {
 #[inline(always)]
 pub fn atanh(x: f64) -> f64 {
     let ax = x.abs();
-    let aix = asuint64(ax);
+    let aix = (ax).to_bits();
     if aix >= ONE_BITS {
         if aix == ONE_BITS {
             return if x.is_sign_negative() {

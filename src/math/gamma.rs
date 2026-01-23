@@ -8,11 +8,6 @@
 use super::{asdouble, exp, expm1, fasttwosum, fma_internal, roundeven_finite};
 use super::{floor, rint};
 
-#[inline(always)]
-fn asuint64(x: f64) -> u64 {
-    x.to_bits()
-}
-
 // === ddcoremath helpers (ported) ===
 
 #[inline(always)]
@@ -4495,7 +4490,7 @@ fn as_lgamma_database(x: f64, mut f: f64) -> f64 {
 }
 
 fn as_logd(x: f64, l: &mut f64) -> f64 {
-    let mut t = asuint64(x);
+    let mut t = (x).to_bits();
     let mut ex = (t >> 52) as i32;
     if ex == 0 {
         let k = t.leading_zeros() as i32;
@@ -4533,7 +4528,7 @@ fn as_logd(x: f64, l: &mut f64) -> f64 {
 }
 
 fn as_logd_accurate(x: f64, l: &mut f64, l2: &mut f64) -> f64 {
-    let mut t = asuint64(x);
+    let mut t = (x).to_bits();
     let mut ex = (t >> 52) as i32;
     if ex == 0 {
         let k = t.leading_zeros() as i32;
@@ -4821,7 +4816,7 @@ fn as_lgamma_asym_accurate(xh: f64, xl: &mut f64, e: &mut f64) -> f64 {
             l1 = sumdd(l1, l2, dl1, dl2, &mut l2);
         }
 
-        let (wh, wl) = if (asuint64(xh) >> 52) > (0x3ff + 51) {
+        let (wh, wl) = if ((xh).to_bits() >> 52) > (0x3ff + 51) {
             (xh, *xl - 0.5)
         } else {
             (xh - 0.5, *xl)
@@ -5786,7 +5781,7 @@ fn as_lgamma_accurate_dd(mut x: f64) -> (f64, f64) {
         }
     }
 
-    let ft = asuint64(fl).wrapping_add(2) & ((!0u64) >> 12);
+    let ft = (fl).to_bits().wrapping_add(2) & ((!0u64) >> 12);
     if ft <= 2 {
         return (as_lgamma_database(sx, fh + fl), 0.0);
     }
@@ -5800,7 +5795,7 @@ fn as_lgamma_accurate(x: f64) -> f64 {
 #[inline(never)]
 #[allow(unused_assignments)]
 fn ieee754_lgamma_r(x: f64, signgamp: &mut i32) -> f64 {
-    let t = asuint64(x);
+    let t = (x).to_bits();
     let nx = t << 1;
     if nx >= 0xfeaea9b24f16a34c {
         // |x| >= 0x1.006df1bfac84ep+1015
@@ -5868,7 +5863,7 @@ fn ieee754_lgamma_r(x: f64, signgamp: &mut i32) -> f64 {
             // -0.5 < x < -0.03125 || 0.03125 < x < 0.5
             let mut xl = 0.0;
             let tf = fasttwosum(1.0, asdouble(t), &mut xl);
-            au = (asuint64(tf) >> 37) as u32;
+            au = ((tf).to_bits() >> 37) as u32;
             let ou = au - UBRD[0];
             let mut j =
                 ((0x157ced865u64 - (ou as u64) * 0x150d) * (ou as u64) + 0x128000000000) >> 45;

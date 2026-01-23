@@ -9,11 +9,6 @@ use super::{erf_data, erfc_data};
 
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
 
-#[inline(always)]
-fn asuint64(x: f64) -> u64 {
-    x.to_bits()
-}
-
 // Add a + b, such that *hi + *lo approximates a + b (|a| >= |b|).
 #[inline(always)]
 fn fast_two_sum(hi: &mut f64, lo: &mut f64, a: f64, b: f64) {
@@ -217,7 +212,7 @@ fn cr_erf_accurate(h: &mut f64, l: &mut f64, z: f64) {
 #[inline(always)]
 pub fn erf(x: f64) -> f64 {
     let z = x.abs();
-    let ux = asuint64(z);
+    let ux = (z).to_bits();
     if ux > 0x4017_afb4_8dc9_6626u64 {
         let os = copysign(1.0, x);
         if ux > 0x7ff0_0000_0000_0000u64 {
@@ -245,9 +240,9 @@ pub fn erf(x: f64) -> f64 {
     let mut h = 0.0;
     let mut l = 0.0;
     let err = cr_erf_fast(&mut h, &mut l, z);
-    let t = asuint64(x);
-    let mut u = asuint64(h);
-    let mut v = asuint64(l);
+    let t = (x).to_bits();
+    let mut u = (h).to_bits();
+    let mut v = (l).to_bits();
     u ^= t & SIGN_MASK;
     v ^= t & SIGN_MASK;
     let uf = asdouble(u);
@@ -547,7 +542,7 @@ fn cr_erfc_accurate(x: f64) -> f64 {
 
 #[inline(always)]
 pub fn erfc(x: f64) -> f64 {
-    let t = asuint64(x);
+    let t = (x).to_bits();
     let at = t & 0x7fff_ffff_ffff_ffffu64;
     if t >= 0x8000_0000_0000_0000u64 {
         if t >= 0xc017_744f_8f74_e94bu64 {
