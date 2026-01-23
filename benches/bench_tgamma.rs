@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_tgamma};
@@ -14,11 +13,11 @@ fn bench_tgamma(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("tgamma/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::tgamma, glibc_tgamma);
+    bench_inputs(&mut group, &inputs, fastmaths::tgamma, glibc_tgamma);
     group.finish();
 
     let mut group = c.benchmark_group("tgamma/common");
-    bench_inputs(&mut group, &common, fastlibm::tgamma, glibc_tgamma);
+    bench_inputs(&mut group, &common, fastmaths::tgamma, glibc_tgamma);
     group.finish();
 }
 

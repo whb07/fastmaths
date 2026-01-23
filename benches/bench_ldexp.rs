@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs_i32_arg, configure_criterion, gen_range, glibc_ldexp};
@@ -24,11 +23,11 @@ fn bench_ldexp(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("ldexp/smoke");
-    bench_inputs_i32_arg(&mut group, &inputs, fastlibm::ldexp, glibc_ldexp);
+    bench_inputs_i32_arg(&mut group, &inputs, fastmaths::ldexp, glibc_ldexp);
     group.finish();
 
     let mut group = c.benchmark_group("ldexp/common");
-    bench_inputs_i32_arg(&mut group, &common, fastlibm::ldexp, glibc_ldexp);
+    bench_inputs_i32_arg(&mut group, &common, fastmaths::ldexp, glibc_ldexp);
     group.finish();
 }
 

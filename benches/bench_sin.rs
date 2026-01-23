@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_sin};
@@ -29,19 +28,19 @@ fn bench_sin(c: &mut Criterion) {
     let huge = gen_range(1024, -1e20, 1e20, 0x9abc);
 
     let mut group = c.benchmark_group("sin/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::sin, glibc_sin);
+    bench_inputs(&mut group, &inputs, fastmaths::sin, glibc_sin);
     group.finish();
 
     let mut group = c.benchmark_group("sin/common");
-    bench_inputs(&mut group, &common, fastlibm::sin, glibc_sin);
+    bench_inputs(&mut group, &common, fastmaths::sin, glibc_sin);
     group.finish();
 
     let mut group = c.benchmark_group("sin/medium");
-    bench_inputs(&mut group, &medium, fastlibm::sin, glibc_sin);
+    bench_inputs(&mut group, &medium, fastmaths::sin, glibc_sin);
     group.finish();
 
     let mut group = c.benchmark_group("sin/huge");
-    bench_inputs(&mut group, &huge, fastlibm::sin, glibc_sin);
+    bench_inputs(&mut group, &huge, fastmaths::sin, glibc_sin);
     group.finish();
 }
 

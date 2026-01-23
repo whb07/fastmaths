@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_trunc};
@@ -12,11 +11,11 @@ fn bench_trunc(c: &mut Criterion) {
     let common = gen_range(2048, -1e6, 1e6, 0x1415);
 
     let mut group = c.benchmark_group("trunc/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::trunc, glibc_trunc);
+    bench_inputs(&mut group, &inputs, fastmaths::trunc, glibc_trunc);
     group.finish();
 
     let mut group = c.benchmark_group("trunc/common");
-    bench_inputs(&mut group, &common, fastlibm::trunc, glibc_trunc);
+    bench_inputs(&mut group, &common, fastmaths::trunc, glibc_trunc);
     group.finish();
 }
 

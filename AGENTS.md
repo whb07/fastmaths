@@ -29,7 +29,7 @@ This crate aims to implement **fast, correct** replacements for glibc `libm` rou
 
 ## Benchmarking & glibc Inspection Tools
 
-- Use **Criterion** to validate wins and catch regressions: compare `fastlibm::*` against `f64::{exp,ln,sin,cos}`.
+- Use **Criterion** to validate wins and catch regressions: compare `fastmaths::*` against `f64::{exp,ln,sin,cos}`.
 - For building a reference glibc with AVX/FMA optimizations, use:
     - `./build_libm.sh` (builds libm from source with `-march=native`)
 - When debugging parity/perf vs glibc, inspect the system `libm.so.6` or the newly built one with:

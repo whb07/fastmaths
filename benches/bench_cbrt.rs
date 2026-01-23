@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_cbrt};
@@ -10,15 +9,15 @@ fn bench_cbrt(c: &mut Criterion) {
     let huge = gen_range(1024, -1e300, 1e300, 0x1357_9bdf);
 
     let mut group = c.benchmark_group("cbrt/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::cbrt, glibc_cbrt);
+    bench_inputs(&mut group, &inputs, fastmaths::cbrt, glibc_cbrt);
     group.finish();
 
     let mut group = c.benchmark_group("cbrt/common");
-    bench_inputs(&mut group, &common, fastlibm::cbrt, glibc_cbrt);
+    bench_inputs(&mut group, &common, fastmaths::cbrt, glibc_cbrt);
     group.finish();
 
     let mut group = c.benchmark_group("cbrt/huge");
-    bench_inputs(&mut group, &huge, fastlibm::cbrt, glibc_cbrt);
+    bench_inputs(&mut group, &huge, fastmaths::cbrt, glibc_cbrt);
     group.finish();
 }
 

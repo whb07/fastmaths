@@ -1,11 +1,10 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_ilogb};
 
 fn fast_ilogb(x: f64) -> f64 {
-    fastlibm::ilogb(x) as f64
+    fastmaths::ilogb(x) as f64
 }
 
 fn glibc_ilogb_f64(x: f64) -> f64 {

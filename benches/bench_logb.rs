@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_logb};
@@ -9,11 +8,11 @@ fn bench_logb(c: &mut Criterion) {
     let common = gen_range(1024, -100.0, 100.0, 0x1c01);
 
     let mut group = c.benchmark_group("logb/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::logb, glibc_logb);
+    bench_inputs(&mut group, &inputs, fastmaths::logb, glibc_logb);
     group.finish();
 
     let mut group = c.benchmark_group("logb/common");
-    bench_inputs(&mut group, &common, fastlibm::logb, glibc_logb);
+    bench_inputs(&mut group, &common, fastmaths::logb, glibc_logb);
     group.finish();
 }
 

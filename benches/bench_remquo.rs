@@ -1,5 +1,4 @@
 use criterion::{Criterion, black_box};
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{configure_criterion, gen_pairs, glibc_remquo};
@@ -21,12 +20,12 @@ fn bench_remquo(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("remquo/smoke");
-    group.bench_function("fastlibm", |b| {
+    group.bench_function("fastmaths", |b| {
         b.iter(|| {
             let mut acc = 0.0;
             let mut acc_q = 0i32;
             for &(x, y) in &inputs {
-                let (r, q) = fastlibm::remquo(black_box(x), black_box(y));
+                let (r, q) = fastmaths::remquo(black_box(x), black_box(y));
                 acc += r;
                 acc_q ^= q;
             }
@@ -48,12 +47,12 @@ fn bench_remquo(c: &mut Criterion) {
     group.finish();
 
     let mut group = c.benchmark_group("remquo/common");
-    group.bench_function("fastlibm", |b| {
+    group.bench_function("fastmaths", |b| {
         b.iter(|| {
             let mut acc = 0.0;
             let mut acc_q = 0i32;
             for &(x, y) in &common {
-                let (r, q) = fastlibm::remquo(black_box(x), black_box(y));
+                let (r, q) = fastmaths::remquo(black_box(x), black_box(y));
                 acc += r;
                 acc_q ^= q;
             }

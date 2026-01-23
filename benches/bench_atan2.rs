@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs2, configure_criterion, gen_pairs, glibc_atan2};
@@ -22,15 +21,15 @@ fn bench_atan2(c: &mut Criterion) {
     let wide = gen_pairs(1024, -1e6, 1e6, 0x5926);
 
     let mut group = c.benchmark_group("atan2/smoke");
-    bench_inputs2(&mut group, &inputs, fastlibm::atan2, glibc_atan2);
+    bench_inputs2(&mut group, &inputs, fastmaths::atan2, glibc_atan2);
     group.finish();
 
     let mut group = c.benchmark_group("atan2/common");
-    bench_inputs2(&mut group, &common, fastlibm::atan2, glibc_atan2);
+    bench_inputs2(&mut group, &common, fastmaths::atan2, glibc_atan2);
     group.finish();
 
     let mut group = c.benchmark_group("atan2/wide");
-    bench_inputs2(&mut group, &wide, fastlibm::atan2, glibc_atan2);
+    bench_inputs2(&mut group, &wide, fastmaths::atan2, glibc_atan2);
     group.finish();
 }
 

@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, glibc_exp};
@@ -21,7 +20,7 @@ fn bench_exp(c: &mut Criterion) {
         700.0,
     ];
     let mut group = c.benchmark_group("exp/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::exp, glibc_exp);
+    bench_inputs(&mut group, &inputs, fastmaths::exp, glibc_exp);
     group.finish();
 }
 

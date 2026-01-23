@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs2, configure_criterion, gen_pairs, glibc_fmin};
@@ -9,11 +8,11 @@ fn bench_fmin(c: &mut Criterion) {
     let pairs = gen_pairs(1024, -100.0, 100.0, 0x1a01);
 
     let mut group = c.benchmark_group("fmin/smoke");
-    bench_inputs2(&mut group, &inputs, fastlibm::fmin, glibc_fmin);
+    bench_inputs2(&mut group, &inputs, fastmaths::fmin, glibc_fmin);
     group.finish();
 
     let mut group = c.benchmark_group("fmin/common");
-    bench_inputs2(&mut group, &pairs, fastlibm::fmin, glibc_fmin);
+    bench_inputs2(&mut group, &pairs, fastmaths::fmin, glibc_fmin);
     group.finish();
 }
 

@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_tan};
@@ -27,19 +26,19 @@ fn bench_tan(c: &mut Criterion) {
     let huge = gen_range(1024, -1e20, 1e20, 0x9abc);
 
     let mut group = c.benchmark_group("tan/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::tan, glibc_tan);
+    bench_inputs(&mut group, &inputs, fastmaths::tan, glibc_tan);
     group.finish();
 
     let mut group = c.benchmark_group("tan/common");
-    bench_inputs(&mut group, &common, fastlibm::tan, glibc_tan);
+    bench_inputs(&mut group, &common, fastmaths::tan, glibc_tan);
     group.finish();
 
     let mut group = c.benchmark_group("tan/medium");
-    bench_inputs(&mut group, &medium, fastlibm::tan, glibc_tan);
+    bench_inputs(&mut group, &medium, fastmaths::tan, glibc_tan);
     group.finish();
 
     let mut group = c.benchmark_group("tan/huge");
-    bench_inputs(&mut group, &huge, fastlibm::tan, glibc_tan);
+    bench_inputs(&mut group, &huge, fastmaths::tan, glibc_tan);
     group.finish();
 }
 

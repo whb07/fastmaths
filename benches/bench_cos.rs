@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_cos};
@@ -29,19 +28,19 @@ fn bench_cos(c: &mut Criterion) {
     let huge = gen_range(1024, -1e20, 1e20, 0x9abc);
 
     let mut group = c.benchmark_group("cos/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::cos, glibc_cos);
+    bench_inputs(&mut group, &inputs, fastmaths::cos, glibc_cos);
     group.finish();
 
     let mut group = c.benchmark_group("cos/common");
-    bench_inputs(&mut group, &common, fastlibm::cos, glibc_cos);
+    bench_inputs(&mut group, &common, fastmaths::cos, glibc_cos);
     group.finish();
 
     let mut group = c.benchmark_group("cos/medium");
-    bench_inputs(&mut group, &medium, fastlibm::cos, glibc_cos);
+    bench_inputs(&mut group, &medium, fastmaths::cos, glibc_cos);
     group.finish();
 
     let mut group = c.benchmark_group("cos/huge");
-    bench_inputs(&mut group, &huge, fastlibm::cos, glibc_cos);
+    bench_inputs(&mut group, &huge, fastmaths::cos, glibc_cos);
     group.finish();
 }
 

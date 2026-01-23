@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs2, configure_criterion, gen_pairs, glibc_remainder};
@@ -14,11 +13,11 @@ fn bench_remainder(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("remainder/smoke");
-    bench_inputs2(&mut group, &inputs, fastlibm::remainder, glibc_remainder);
+    bench_inputs2(&mut group, &inputs, fastmaths::remainder, glibc_remainder);
     group.finish();
 
     let mut group = c.benchmark_group("remainder/common");
-    bench_inputs2(&mut group, &common, fastlibm::remainder, glibc_remainder);
+    bench_inputs2(&mut group, &common, fastmaths::remainder, glibc_remainder);
     group.finish();
 }
 

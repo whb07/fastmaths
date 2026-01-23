@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_acos};
@@ -9,11 +8,11 @@ fn bench_acos(c: &mut Criterion) {
     let common = gen_range(1024, -1.0, 1.0, 0x246b);
 
     let mut group = c.benchmark_group("acos/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::acos, glibc_acos);
+    bench_inputs(&mut group, &inputs, fastmaths::acos, glibc_acos);
     group.finish();
 
     let mut group = c.benchmark_group("acos/common");
-    bench_inputs(&mut group, &common, fastlibm::acos, glibc_acos);
+    bench_inputs(&mut group, &common, fastmaths::acos, glibc_acos);
     group.finish();
 }
 

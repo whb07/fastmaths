@@ -1,6 +1,5 @@
 #![cfg(feature = "mpfr")]
 
-use fastmaths as fastlibm;
 use rug::Float;
 use std::env;
 
@@ -44,7 +43,7 @@ struct LibmFns {
 }
 
 fn glibc_exp_opt() -> Option<LibmFns> {
-    let path = env::var("FASTLIBM_GLIBC_LIBM")
+    let path = env::var("FASTMATHS_GLIBC_LIBM")
         .ok()
         .filter(|v| !v.trim().is_empty())
         .or_else(|| {
@@ -88,7 +87,7 @@ struct ReportRow {
 
 fn push_report(rows: &mut Vec<ReportRow>, label: &'static str, x: f64, glibc: Option<&LibmFns>) {
     let mpfr = mpfr_exp_f64(x);
-    let fast = fastlibm::exp(x);
+    let fast = fastmaths::exp(x);
     let fast_ulps = ulp_error(fast, mpfr);
     let glibc_row = glibc
         .map(|g| unsafe { (g.exp)(x) })
@@ -122,15 +121,15 @@ fn print_report(rows: &[ReportRow]) {
 
 #[test]
 fn mpfr_exp_sweep() {
-    let x0 = match env::var("FASTLIBM_MPFR_X") {
-        Ok(v) => v.parse::<f64>().expect("FASTLIBM_MPFR_X must be f64"),
+    let x0 = match env::var("FASTMATHS_MPFR_X") {
+        Ok(v) => v.parse::<f64>().expect("FASTMATHS_MPFR_X must be f64"),
         Err(_) => return,
     };
-    let radius = env::var("FASTLIBM_MPFR_RADIUS")
+    let radius = env::var("FASTMATHS_MPFR_RADIUS")
         .ok()
         .and_then(|v| v.parse::<i64>().ok())
         .unwrap_or(10_000);
-    let stride = env::var("FASTLIBM_MPFR_STRIDE")
+    let stride = env::var("FASTMATHS_MPFR_STRIDE")
         .ok()
         .and_then(|v| v.parse::<i64>().ok())
         .unwrap_or(1);
@@ -154,7 +153,7 @@ fn mpfr_exp_sweep() {
         };
         let x = f64::from_bits(bits);
         let expected = mpfr_exp_f64(x);
-        let actual = fastlibm::exp(x);
+        let actual = fastmaths::exp(x);
         let ulps = ulp_error(actual, expected);
         if ulps > max_ulps {
             max_ulps = ulps;
@@ -175,10 +174,10 @@ fn mpfr_exp_sweep() {
     }
 
     println!("MPFR sweep around x0={x0} (radius={radius} stride={stride})");
-    println!("fastlibm max ulp error vs MPFR: ulps={max_ulps} at x={max_x}");
+    println!("fastmaths max ulp error vs MPFR: ulps={max_ulps} at x={max_x}");
     if let Some((x, actual, expected)) = first_mismatch {
         println!(
-            "first fastlibm mismatch: x={x} actual={actual:.17e} expected={expected:.17e} ulps={}",
+            "first fastmaths mismatch: x={x} actual={actual:.17e} expected={expected:.17e} ulps={}",
             ulp_error(actual, expected)
         );
     } else {
@@ -189,15 +188,15 @@ fn mpfr_exp_sweep() {
         println!("glibc max ulp error vs MPFR: ulps={max_glibc_ulps} at x={max_glibc_x}");
     }
 
-    push_report(&mut report, "fastlibm_max", max_x, glibc.as_ref());
+    push_report(&mut report, "fastmaths_max", max_x, glibc.as_ref());
     if glibc.is_some() {
         push_report(&mut report, "glibc_max", max_glibc_x, glibc.as_ref());
     }
     if let Some((x, _, _)) = first_mismatch {
-        push_report(&mut report, "fastlibm_first", x, glibc.as_ref());
+        push_report(&mut report, "fastmaths_first", x, glibc.as_ref());
     }
 
-    let report_enabled = env::var("FASTLIBM_MPFR_REPORT")
+    let report_enabled = env::var("FASTMATHS_MPFR_REPORT")
         .ok()
         .map(|v| v != "0")
         .unwrap_or(true);

@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, glibc_atan};
@@ -7,7 +6,7 @@ use bench_util::{bench_inputs, configure_criterion, glibc_atan};
 fn bench_atan(c: &mut Criterion) {
     let inputs = [-1e6, -10.0, -1.0, -1e-6, 0.0, 1e-6, 1.0, 10.0, 1e6];
     let mut group = c.benchmark_group("atan/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::atan, glibc_atan);
+    bench_inputs(&mut group, &inputs, fastmaths::atan, glibc_atan);
     group.finish();
 }
 

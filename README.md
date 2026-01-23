@@ -1,4 +1,4 @@
-# Fastlibm
+# fastmaths
 
 A high-performance, `no_std` Rust math library aiming for **glibc parity**, **speed**, and **strict accuracy** (≤ 1.0 ULP).
 
@@ -54,14 +54,14 @@ Recent precision improvements:
 
 ## Performance
 
-`fastlibm` is designed to be faster than the system `glibc` implementation. Recent benchmarks (x86_64, January 23, 2026) show significant improvements:
+`fastmaths` is designed to be faster than the system `glibc` implementation. Recent benchmarks (x86_64, January 23, 2026) show significant improvements:
 
 - **`atan`**: ~36% speedup vs glibc
 - **`atan2`**: ~62% speedup vs glibc
 - **`cbrt`**: ~18% speedup vs glibc
 - **`cos`**: ~37% speedup vs glibc
 
-Latest hyperbolic benchmarks (fastlibm vs glibc, median times):
+Latest hyperbolic benchmarks (fastmaths vs glibc, median times):
 
 - **`sinh`**:
   - smoke: 158.09 ns vs 182.90 ns
@@ -76,14 +76,14 @@ Latest hyperbolic benchmarks (fastlibm vs glibc, median times):
   - common: 16.932 µs vs 26.286 µs
   - wide: 15.795 µs vs 17.302 µs
 
-Across the current benchmark suite (84 groups, see `latest_bench_foo.txt`), fastlibm outperforms glibc in every group.
+Across the current benchmark suite (84 groups, see `latest_bench_foo.txt`), fastmaths outperforms glibc in every group.
 
 To run the full suite of benchmarks:
 ```bash
 cargo bench
 ```
 
-*Note: For maximum performance, compile with `RUSTFLAGS="-C target-cpu=native"` to enable hardware-specific optimizations like FMA and SSE2 instructions. For glibc comparisons, point the benches at a locally-built `libm` via `FASTLIBM_GLIBC_LIBM` or use `./build_libm.sh`.*
+*Note: For maximum performance, compile with `RUSTFLAGS="-C target-cpu=native"` to enable hardware-specific optimizations like FMA and SSE2 instructions. For glibc comparisons, point the benches at a locally-built `libm` via `FASTMATHS_GLIBC_LIBM` or use `./build_libm.sh`.*
 
 ## Usage
 

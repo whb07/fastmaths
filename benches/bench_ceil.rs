@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_ceil};
@@ -12,11 +11,11 @@ fn bench_ceil(c: &mut Criterion) {
     let common = gen_range(2048, -1e6, 1e6, 0x1213);
 
     let mut group = c.benchmark_group("ceil/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::ceil, glibc_ceil);
+    bench_inputs(&mut group, &inputs, fastmaths::ceil, glibc_ceil);
     group.finish();
 
     let mut group = c.benchmark_group("ceil/common");
-    bench_inputs(&mut group, &common, fastlibm::ceil, glibc_ceil);
+    bench_inputs(&mut group, &common, fastmaths::ceil, glibc_ceil);
     group.finish();
 }
 

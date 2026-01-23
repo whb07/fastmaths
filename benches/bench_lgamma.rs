@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_lgamma};
@@ -16,11 +15,11 @@ fn bench_lgamma(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("lgamma/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::lgamma, glibc_lgamma);
+    bench_inputs(&mut group, &inputs, fastmaths::lgamma, glibc_lgamma);
     group.finish();
 
     let mut group = c.benchmark_group("lgamma/common");
-    bench_inputs(&mut group, &common, fastlibm::lgamma, glibc_lgamma);
+    bench_inputs(&mut group, &common, fastmaths::lgamma, glibc_lgamma);
     group.finish();
 }
 

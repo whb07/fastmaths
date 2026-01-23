@@ -62,7 +62,7 @@ pub fn bench_inputs<F, G>(
     F: Fn(f64) -> f64 + Copy,
     G: Fn(f64) -> f64 + Copy,
 {
-    group.bench_function("fastlibm", |b| {
+    group.bench_function("fastmaths", |b| {
         b.iter(|| {
             let mut acc = 0.0;
             for &x in inputs {
@@ -91,7 +91,7 @@ pub fn bench_inputs_i64<F, G>(
     F: Fn(f64) -> i64 + Copy,
     G: Fn(f64) -> i64 + Copy,
 {
-    group.bench_function("fastlibm", |b| {
+    group.bench_function("fastmaths", |b| {
         b.iter(|| {
             let mut acc: i64 = 0;
             for &x in inputs {
@@ -120,7 +120,7 @@ pub fn bench_inputs2<F, G>(
     F: Fn(f64, f64) -> f64 + Copy,
     G: Fn(f64, f64) -> f64 + Copy,
 {
-    group.bench_function("fastlibm", |b| {
+    group.bench_function("fastmaths", |b| {
         b.iter(|| {
             let mut acc = 0.0;
             for &(x, y) in inputs {
@@ -149,7 +149,7 @@ pub fn bench_inputs3<F, G>(
     F: Fn(f64, f64, f64) -> f64 + Copy,
     G: Fn(f64, f64, f64) -> f64 + Copy,
 {
-    group.bench_function("fastlibm", |b| {
+    group.bench_function("fastmaths", |b| {
         b.iter(|| {
             let mut acc = 0.0;
             for &(x, y, z) in inputs {
@@ -178,7 +178,7 @@ pub fn bench_inputs_i32_arg<F, G>(
     F: Fn(f64, i32) -> f64 + Copy,
     G: Fn(f64, i32) -> f64 + Copy,
 {
-    group.bench_function("fastlibm", |b| {
+    group.bench_function("fastmaths", |b| {
         b.iter(|| {
             let mut acc = 0.0;
             for &(x, n) in inputs {
@@ -207,7 +207,7 @@ pub fn bench_inputs_i64_arg<F, G>(
     F: Fn(f64, i64) -> f64 + Copy,
     G: Fn(f64, i64) -> f64 + Copy,
 {
-    group.bench_function("fastlibm", |b| {
+    group.bench_function("fastmaths", |b| {
         b.iter(|| {
             let mut acc = 0.0;
             for &(x, n) in inputs {
@@ -296,7 +296,7 @@ struct LibmFns {
 static LIBM_FNS: OnceLock<LibmFns> = OnceLock::new();
 
 fn libm_path() -> String {
-    if let Ok(value) = std::env::var("FASTLIBM_GLIBC_LIBM") {
+    if let Ok(value) = std::env::var("FASTMATHS_GLIBC_LIBM") {
         let value = value.trim().to_string();
         if !value.is_empty() {
             return value;
@@ -306,7 +306,7 @@ fn libm_path() -> String {
     if std::path::Path::new(default).exists() {
         return default.to_string();
     }
-    panic!("glibc libm not found; set FASTLIBM_GLIBC_LIBM");
+    panic!("glibc libm not found; set FASTMATHS_GLIBC_LIBM");
 }
 
 fn load_libm() -> LibmFns {

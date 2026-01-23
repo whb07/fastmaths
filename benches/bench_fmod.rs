@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs2, configure_criterion, gen_pairs, glibc_fmod};
@@ -14,11 +13,11 @@ fn bench_fmod(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("fmod/smoke");
-    bench_inputs2(&mut group, &inputs, fastlibm::fmod, glibc_fmod);
+    bench_inputs2(&mut group, &inputs, fastmaths::fmod, glibc_fmod);
     group.finish();
 
     let mut group = c.benchmark_group("fmod/common");
-    bench_inputs2(&mut group, &common, fastlibm::fmod, glibc_fmod);
+    bench_inputs2(&mut group, &common, fastmaths::fmod, glibc_fmod);
     group.finish();
 }
 

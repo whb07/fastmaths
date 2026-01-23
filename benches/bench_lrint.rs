@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs_i64, configure_criterion, gen_range, glibc_lrint};
@@ -12,11 +11,11 @@ fn bench_lrint(c: &mut Criterion) {
     let common = gen_range(2048, -1e6, 1e6, 0x1c1d);
 
     let mut group = c.benchmark_group("lrint/smoke");
-    bench_inputs_i64(&mut group, &inputs, fastlibm::lrint, glibc_lrint);
+    bench_inputs_i64(&mut group, &inputs, fastmaths::lrint, glibc_lrint);
     group.finish();
 
     let mut group = c.benchmark_group("lrint/common");
-    bench_inputs_i64(&mut group, &common, fastlibm::lrint, glibc_lrint);
+    bench_inputs_i64(&mut group, &common, fastmaths::lrint, glibc_lrint);
     group.finish();
 }
 

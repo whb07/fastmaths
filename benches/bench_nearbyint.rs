@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_nearbyint};
@@ -12,11 +11,11 @@ fn bench_nearbyint(c: &mut Criterion) {
     let common = gen_range(2048, -1e6, 1e6, 0x1a1b);
 
     let mut group = c.benchmark_group("nearbyint/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::nearbyint, glibc_nearbyint);
+    bench_inputs(&mut group, &inputs, fastmaths::nearbyint, glibc_nearbyint);
     group.finish();
 
     let mut group = c.benchmark_group("nearbyint/common");
-    bench_inputs(&mut group, &common, fastlibm::nearbyint, glibc_nearbyint);
+    bench_inputs(&mut group, &common, fastmaths::nearbyint, glibc_nearbyint);
     group.finish();
 }
 

@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs_i32_arg, configure_criterion, gen_range, glibc_scalbn};
@@ -24,11 +23,11 @@ fn bench_scalbn(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("scalbn/smoke");
-    bench_inputs_i32_arg(&mut group, &inputs, fastlibm::scalbn, glibc_scalbn);
+    bench_inputs_i32_arg(&mut group, &inputs, fastmaths::scalbn, glibc_scalbn);
     group.finish();
 
     let mut group = c.benchmark_group("scalbn/common");
-    bench_inputs_i32_arg(&mut group, &common, fastlibm::scalbn, glibc_scalbn);
+    bench_inputs_i32_arg(&mut group, &common, fastmaths::scalbn, glibc_scalbn);
     group.finish();
 }
 

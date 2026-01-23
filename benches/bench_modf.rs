@@ -1,5 +1,4 @@
 use criterion::{BenchmarkGroup, Criterion, black_box};
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{configure_criterion, gen_range, glibc_modf};
@@ -8,11 +7,11 @@ fn bench_modf_group(
     group: &mut BenchmarkGroup<'_, criterion::measurement::WallTime>,
     inputs: &[f64],
 ) {
-    group.bench_function("fastlibm", |b| {
+    group.bench_function("fastmaths", |b| {
         b.iter(|| {
             let mut acc = 0.0;
             for &x in inputs {
-                let (frac, int) = fastlibm::modf(black_box(x));
+                let (frac, int) = fastmaths::modf(black_box(x));
                 acc += frac + int;
             }
             black_box(acc)

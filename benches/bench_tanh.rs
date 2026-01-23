@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_tanh};
@@ -10,15 +9,15 @@ fn bench_tanh(c: &mut Criterion) {
     let wide = gen_range(1024, -20.0, 20.0, 0x358b);
 
     let mut group = c.benchmark_group("tanh/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::tanh, glibc_tanh);
+    bench_inputs(&mut group, &inputs, fastmaths::tanh, glibc_tanh);
     group.finish();
 
     let mut group = c.benchmark_group("tanh/common");
-    bench_inputs(&mut group, &common, fastlibm::tanh, glibc_tanh);
+    bench_inputs(&mut group, &common, fastmaths::tanh, glibc_tanh);
     group.finish();
 
     let mut group = c.benchmark_group("tanh/wide");
-    bench_inputs(&mut group, &wide, fastlibm::tanh, glibc_tanh);
+    bench_inputs(&mut group, &wide, fastmaths::tanh, glibc_tanh);
     group.finish();
 }
 

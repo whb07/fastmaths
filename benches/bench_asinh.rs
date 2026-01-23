@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_asinh};
@@ -10,15 +9,15 @@ fn bench_asinh(c: &mut Criterion) {
     let wide = gen_range(1024, -100.0, 100.0, 0x1102);
 
     let mut group = c.benchmark_group("asinh/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::asinh, glibc_asinh);
+    bench_inputs(&mut group, &inputs, fastmaths::asinh, glibc_asinh);
     group.finish();
 
     let mut group = c.benchmark_group("asinh/common");
-    bench_inputs(&mut group, &common, fastlibm::asinh, glibc_asinh);
+    bench_inputs(&mut group, &common, fastmaths::asinh, glibc_asinh);
     group.finish();
 
     let mut group = c.benchmark_group("asinh/wide");
-    bench_inputs(&mut group, &wide, fastlibm::asinh, glibc_asinh);
+    bench_inputs(&mut group, &wide, fastmaths::asinh, glibc_asinh);
     group.finish();
 }
 

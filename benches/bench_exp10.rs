@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_exp10};
@@ -10,15 +9,15 @@ fn bench_exp10(c: &mut Criterion) {
     let wide = gen_range(1024, -100.0, 100.0, 0x1602);
 
     let mut group = c.benchmark_group("exp10/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::exp10, glibc_exp10);
+    bench_inputs(&mut group, &inputs, fastmaths::exp10, glibc_exp10);
     group.finish();
 
     let mut group = c.benchmark_group("exp10/common");
-    bench_inputs(&mut group, &common, fastlibm::exp10, glibc_exp10);
+    bench_inputs(&mut group, &common, fastmaths::exp10, glibc_exp10);
     group.finish();
 
     let mut group = c.benchmark_group("exp10/wide");
-    bench_inputs(&mut group, &wide, fastlibm::exp10, glibc_exp10);
+    bench_inputs(&mut group, &wide, fastmaths::exp10, glibc_exp10);
     group.finish();
 }
 

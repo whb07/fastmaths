@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs, configure_criterion, gen_range, glibc_atanh};
@@ -10,15 +9,15 @@ fn bench_atanh(c: &mut Criterion) {
     let tight = gen_range(1024, -0.999, 0.999, 0x1302);
 
     let mut group = c.benchmark_group("atanh/smoke");
-    bench_inputs(&mut group, &inputs, fastlibm::atanh, glibc_atanh);
+    bench_inputs(&mut group, &inputs, fastmaths::atanh, glibc_atanh);
     group.finish();
 
     let mut group = c.benchmark_group("atanh/common");
-    bench_inputs(&mut group, &common, fastlibm::atanh, glibc_atanh);
+    bench_inputs(&mut group, &common, fastmaths::atanh, glibc_atanh);
     group.finish();
 
     let mut group = c.benchmark_group("atanh/tight");
-    bench_inputs(&mut group, &tight, fastlibm::atanh, glibc_atanh);
+    bench_inputs(&mut group, &tight, fastmaths::atanh, glibc_atanh);
     group.finish();
 }
 

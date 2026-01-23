@@ -1,5 +1,4 @@
 use criterion::Criterion;
-use fastmaths as fastlibm;
 
 mod bench_util;
 use bench_util::{bench_inputs2, configure_criterion, gen_pairs, glibc_copysign};
@@ -19,11 +18,11 @@ fn bench_copysign(c: &mut Criterion) {
     let common = gen_pairs(2048, -1e6, 1e6, 0x2425);
 
     let mut group = c.benchmark_group("copysign/smoke");
-    bench_inputs2(&mut group, &inputs, fastlibm::copysign, glibc_copysign);
+    bench_inputs2(&mut group, &inputs, fastmaths::copysign, glibc_copysign);
     group.finish();
 
     let mut group = c.benchmark_group("copysign/common");
-    bench_inputs2(&mut group, &common, fastlibm::copysign, glibc_copysign);
+    bench_inputs2(&mut group, &common, fastmaths::copysign, glibc_copysign);
     group.finish();
 }
 
