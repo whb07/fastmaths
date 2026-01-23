@@ -41,8 +41,8 @@ pub fn acosh(x: f64) -> f64 {
     if e < 0x3ff + 1 {
         // 1 <= x < 2: ln(x + sqrt(x^2 - 1)) with compensated sum.
         let x2 = x * x;
-        let wh = x2 - 1.0;
-        let wl = fma_internal(x, x, -x2);
+        let (wh, w_err) = two_sum(x2, -1.0);
+        let wl = fma_internal(x, x, -x2) + w_err;
         let sh = sqrt(wh);
         let sl = if sh != 0.0 {
             let ish = 0.5 / wh;
@@ -52,8 +52,8 @@ pub fn acosh(x: f64) -> f64 {
         };
         let (th, tl0) = two_sum(x, sh);
         let tl = tl0 + sl;
-        let y = ln(th);
-        return y + tl / th;
+        let (lh, ll) = super::log::ln_dd(th);
+        return lh + (ll + tl / th);
     }
     if e < 0x3ff + 26 {
         // x < 2^26

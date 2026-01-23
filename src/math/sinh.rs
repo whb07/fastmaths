@@ -13,15 +13,11 @@ const SIGN_MASK: u64 = 0x8000_0000_0000_0000u64;
 const EXP_MASK: u64 = 0x7ff0_0000_0000_0000u64;
 
 #[inline(always)]
-fn median3(a: f64, b: f64, c: f64) -> f64 {
-    let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
-    if c <= lo {
-        return lo;
-    }
-    if c >= hi {
-        return hi;
-    }
-    c
+fn two_sum(a: f64, b: f64) -> (f64, f64) {
+    let s = a + b;
+    let bb = s - a;
+    let err = (a - (s - bb)) + (b - bb);
+    (s, err)
 }
 
 #[inline(always)]
@@ -49,15 +45,12 @@ pub fn sinh(x: f64) -> f64 {
         }
         let t = expm1(ax);
         let denom = t + 1.0;
-        let s = if ax < 1.0 {
-            let small = 0.5 * (2.0 * t - (t * t) / denom);
-            let large = 0.5 * (t + t / denom);
-            let e = exp(ax);
-            let exp_basic = 0.5 * (e - 1.0 / e);
-            median3(small, large, exp_basic)
-        } else {
-            0.5 * (t + t / denom)
-        };
+        let r0 = 1.0 / denom;
+        let r = r0 * (2.0 - denom * r0);
+        let q = t * r;
+        let q_err = fma_internal(t, r, -q);
+        let (sum_hi, sum_lo) = two_sum(t, q);
+        let s = fma_internal(0.5, sum_hi, 0.5 * (sum_lo + q_err));
         return if x.is_sign_negative() { -s } else { s };
     }
     if ax < EXP_HI {

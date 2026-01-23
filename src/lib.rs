@@ -2737,6 +2737,34 @@ mod tests {
     }
 
     #[test]
+    fn acosh_sinh_regression_cases() {
+        let x = 1.8399999999999999_f64;
+        let actual = fastlibm::acosh(x);
+        let expected = acosh_reference(x);
+        assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("acosh({x})"));
+
+        let x = -0.7398078960390417_f64;
+        let actual = fastlibm::sinh(x);
+        let expected = sinh_reference(x);
+        assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("sinh({x})"));
+
+        let x = -0.8648745336167547_f64;
+        let actual = fastlibm::sinh(x);
+        let expected = sinh_reference(x);
+        assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("sinh({x})"));
+
+        let x = 0.8392647357681798_f64;
+        let actual = fastlibm::sinh(x);
+        let expected = sinh_reference(x);
+        assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("sinh({x})"));
+
+        let x = -0.723199985761056_f64;
+        let actual = fastlibm::sinh(x);
+        let expected = sinh_reference(x);
+        assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("sinh({x})"));
+    }
+
+    #[test]
     fn asinh_acosh_atanh_matches_reference_ulps() {
         for &x in &asinh_inputs() {
             let actual = fastlibm::asinh(x);
