@@ -2636,6 +2636,14 @@ mod tests {
     }
 
     #[test]
+    fn expm1_regression_for_sinh_case_seed() {
+        let x = 1.7335082797141748_f64;
+        let actual = fastmaths::expm1(x);
+        let expected = expm1_reference(x);
+        assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("expm1({x})"));
+    }
+
+    #[test]
     fn log2_log10_special_cases() {
         assert!(fastmaths::log2(f64::NAN).is_nan());
         assert!(fastmaths::log10(f64::NAN).is_nan());
@@ -2780,6 +2788,79 @@ mod tests {
             expected,
             DERIVED_ULP_TOL,
             &format_case("sinh", x, "seed"),
+        );
+    }
+
+    #[test]
+    fn sinh_regression_near_overflow_threshold() {
+        // This exercises the high-|x| sinh path where exp(|x|) would overflow
+        // but sinh(x) is still finite.
+        let x = -710.475_860_073_934_f64;
+        let actual = fastmaths::sinh(x);
+        let expected = sinh_reference(x);
+        assert_ulp_eq(
+            actual,
+            expected,
+            DERIVED_ULP_TOL,
+            &format_case("sinh", x, "regression"),
+        );
+    }
+
+    #[test]
+    fn sinh_regression_rounding_corner_cases() {
+        // These inputs were found by MPFR proptest as 2-ULP misses at various
+        // points during development. Keep them as explicit unit tests to catch
+        // future regressions in the |x|<1 rounding logic.
+        for &x in &[
+            0.06177710537659864_f64,
+            0.7699349981625943_f64,
+            0.7782559419902234_f64,
+            0.815019628039047_f64,
+            0.8640551460732968_f64,
+        ] {
+            let actual = fastmaths::sinh(x);
+            let expected = sinh_reference(x);
+            assert_ulp_eq(
+                actual,
+                expected,
+                DERIVED_ULP_TOL,
+                &format_case("sinh", x, "regression"),
+            );
+
+            // Odd symmetry: also validate the negative side explicitly.
+            let xn = -x;
+            let actual = fastmaths::sinh(xn);
+            let expected = sinh_reference(xn);
+            assert_ulp_eq(
+                actual,
+                expected,
+                DERIVED_ULP_TOL,
+                &format_case("sinh", xn, "regression"),
+            );
+        }
+    }
+
+    #[test]
+    fn sinh_regression_medium_range() {
+        // MPFR proptest regression in the 1<=|x|<22 path.
+        let x = -1.408992436517082_f64;
+        let actual = fastmaths::sinh(x);
+        let expected = sinh_reference(x);
+        assert_ulp_eq(
+            actual,
+            expected,
+            DERIVED_ULP_TOL,
+            &format_case("sinh", x, "regression"),
+        );
+
+        let xp = -x;
+        let actual = fastmaths::sinh(xp);
+        let expected = sinh_reference(xp);
+        assert_ulp_eq(
+            actual,
+            expected,
+            DERIVED_ULP_TOL,
+            &format_case("sinh", xp, "regression"),
         );
     }
 
@@ -3159,6 +3240,15 @@ mod tests {
             let expected = pow_reference(x, y);
             assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("pow({x},{y})"));
         }
+    }
+
+    #[test]
+    fn pow_regression_negative_tiny_base_negative_odd_int_exp_overflow() {
+        let x = -5.048_709_793_414_476e-29_f64;
+        let y = -11.0_f64;
+        let actual = fastmaths::pow(x, y);
+        let expected = pow_reference(x, y);
+        assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("pow({x},{y})"));
     }
 
     #[test]
