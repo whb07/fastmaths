@@ -2,6 +2,7 @@
 set -euo pipefail
 
 runs="${1:-10}"
+test_filter="${2:-}"
 log_dir="${LOG_DIR:-proptest-runs}"
 if [[ -n "${PARALLEL:-}" ]]; then
     parallel="$PARALLEL"
@@ -92,7 +93,7 @@ run_one() {
         status=0
         for exe in "${test_bins[@]}"; do
             echo ">>> $exe"
-            env "${env_vars[@]}" "$exe"
+            env "${env_vars[@]}" "$exe" "$test_filter"
             rc=$?
             if [[ "$rc" -ne 0 ]]; then
                 echo ">>> $exe exited with $rc"
