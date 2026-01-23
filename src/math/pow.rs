@@ -4,15 +4,13 @@
 //! to exp(y*log(x)) for the general case. Uses ln/exp cores with split constants
 //! for accuracy.
 
-use super::{f64_from_bits, f64_to_bits, fma_internal, ln};
+use super::{LN2_HI, LN2_LO, f64_from_bits, f64_to_bits, fma_internal, ln};
 
 const POW_LOG_TABLE_BITS: u32 = 7;
 const POW_LOG_N: u64 = 1u64 << POW_LOG_TABLE_BITS;
 const POW_LOG_OFF: u64 = 0x3fe6_9555_0000_0000u64;
 const SIGN_BIT: u64 = 0x8000_0000_0000_0000u64;
 
-const POW_LOG_LN2_HI: f64 = f64::from_bits(0x3fe6_2e42_fefa_3800);
-const POW_LOG_LN2_LO: f64 = f64::from_bits(0x3d2e_f357_93c7_6730);
 const POW_OVERFLOW_LOG: f64 = 709.782_712_893_384;
 const POW_LOG_A: [f64; 7] = [
     f64::from_bits(0xbfe0_0000_0000_0000),
@@ -509,9 +507,9 @@ fn log_inline_generic(ix: u64, tail: &mut f64) -> f64 {
     let rlo = zlo * invc;
     let r = rhi + rlo;
 
-    let t1 = kd * POW_LOG_LN2_HI + logc;
+    let t1 = kd * LN2_HI + logc;
     let t2 = t1 + r;
-    let lo1 = kd * POW_LOG_LN2_LO + logctail;
+    let lo1 = kd * LN2_LO + logctail;
     let lo2 = t1 - t2 + r;
 
     let ar = POW_LOG_A[0] * r;
@@ -550,9 +548,9 @@ unsafe fn log_inline_fma(ix: u64, tail: &mut f64) -> f64 {
 
     let r = unsafe { fma_f64(z, invc, -1.0) };
 
-    let t1 = kd * POW_LOG_LN2_HI + logc;
+    let t1 = kd * LN2_HI + logc;
     let t2 = t1 + r;
-    let lo1 = kd * POW_LOG_LN2_LO + logctail;
+    let lo1 = kd * LN2_LO + logctail;
     let lo2 = t1 - t2 + r;
 
     let ar = POW_LOG_A[0] * r;

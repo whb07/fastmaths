@@ -4,7 +4,7 @@
 //! double-double arithmetic for correctly rounded results (<= 1 ULP).
 //! Constants and tables are sourced from glibc/core-math (see glibc/).
 
-use super::{copysign, floor, fma_internal, ldexp, rint};
+use super::{copysign, floor, fma_internal, ldexp, roundeven_finite};
 use super::{erf_data, erfc_data};
 
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
@@ -71,11 +71,6 @@ fn d_mul(hi: &mut f64, lo: &mut f64, ah: f64, al: f64, bh: f64, bl: f64) {
 fn fast_sum(hi: &mut f64, lo: &mut f64, a: f64, bh: f64, bl: f64) {
     fast_two_sum(hi, lo, a, bh);
     *lo += bl;
-}
-
-#[inline(always)]
-fn roundeven_finite(x: f64) -> f64 {
-    rint(x)
 }
 
 // Assuming 0 <= z <= f64::from_bits(0x4017afb48dc96626), put in h+l an approximation of erf(z).

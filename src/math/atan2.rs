@@ -3,13 +3,11 @@
 //! Handles quadrants, signed zeros, and infinities explicitly, then reduces to
 //! atan(y/x) using the atan polynomial core. Matches glibc sign/edge behavior.
 
-use super::{atan, fma_internal};
+use super::{PIO2_HI, atan, fma_internal};
 
 const PI: f64 = core::f64::consts::PI;
 const PI_LO: f64 = 1.224_646_799_147_353_207_2e-16;
-const PIO2_HI: f64 = core::f64::consts::FRAC_PI_2;
 const PIO4: f64 = core::f64::consts::FRAC_PI_4;
-const PIO2_LO: f64 = 6.123_233_995_736_766_035_87e-17;
 
 #[inline(always)]
 fn div_hi_lo(n: f64, d: f64) -> (f64, f64) {

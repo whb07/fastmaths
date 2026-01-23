@@ -4,22 +4,13 @@
 //! log10(x) = y*log10_2hi + (y*log10_2lo + ivln10*ln(mantissa)),
 //! using high/low splits for ≤1 ULP accuracy.
 
-use super::{fma_internal, log::ln, log::ln_dd};
+use super::{TWO54, fma_internal, log::ln, log::ln_dd, two_sum};
 
-const TWO54: f64 = f64::from_bits(0x4350_0000_0000_0000);
 const IVLN10: f64 = f64::from_bits(0x3fdb_cb7b_1526_e50e);
 const IVLN10_HI: f64 = f64::from_bits(0x3fdb_cb7b_1800_0000);
 const IVLN10_LO: f64 = f64::from_bits(0xbe26_c8d7_9000_0000);
 const LOG10_2_HI: f64 = f64::from_bits(0x3fd3_4413_509f_6000);
 const LOG10_2_LO: f64 = f64::from_bits(0x3d59_fef3_11f1_2b36);
-
-#[inline(always)]
-fn two_sum(a: f64, b: f64) -> (f64, f64) {
-    let s = a + b;
-    let bb = s - a;
-    let err = (a - (s - bb)) + (b - bb);
-    (s, err)
-}
 
 #[inline]
 pub fn log10(x: f64) -> f64 {

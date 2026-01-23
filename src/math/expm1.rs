@@ -4,14 +4,12 @@
 //! switches to exp(x)-1 for larger magnitudes. Polynomial degree and constants
 //! match fdlibm/glibc style minimax fits.
 
-use super::{fma_internal, hi_word, lo_word, with_hi_lo};
+use super::{LN2_HI, LN2_LO, fma_internal, hi_word, lo_word, with_hi_lo};
 
 const ONE: f64 = 1.0;
 const HUGE: f64 = 1.0e300;
 const TINY: f64 = 1.0e-300;
 const O_THRESHOLD: f64 = 7.097_827_128_933_839_730_96e+02;
-const LN2_HI: f64 = 6.931_471_803_691_238_164_90e-01;
-const LN2_LO: f64 = 1.908_214_929_270_587_700_02e-10;
 const INVLN2: f64 = core::f64::consts::LOG2_E;
 const SMALL_X: f64 = 0.007_812_5; // 2^-7
 const Q: [f64; 6] = [

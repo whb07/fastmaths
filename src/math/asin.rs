@@ -4,11 +4,7 @@
 //! asin(x)=pi/2-2*asin(sqrt((1-|x|)/2)) for |x|>0.5. Polynomial degrees and
 //! constants are fdlibm-style.
 
-use super::{hi_word, lo_word, sqrt, with_hi_lo};
-
-#[allow(clippy::approx_constant)]
-const PIO2_HI: f64 = 1.570_796_326_794_896_558_00e+00; // 0x3FF921FB, 0x54442D18
-const PIO2_LO: f64 = 6.123_233_995_736_766_035_87e-17; // 0x3C91A626, 0x33145C07
+use super::{PIO2_HI, PIO2_LO, hi_word, lo_word, sqrt, with_hi_lo};
 
 const P_S0: f64 = 1.666_666_666_666_666_574_15e-01;
 const P_S1: f64 = -3.255_658_186_224_009_154_05e-01;

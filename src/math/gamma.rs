@@ -5,7 +5,7 @@
 //! error below 1 ULP in difficult regions. Constants and tables are sourced from
 //! glibc/core-math (see glibc/ directory).
 
-use super::{exp, expm1};
+use super::{exp, expm1, fasttwosum, roundeven_finite};
 use super::{floor, rint};
 
 #[inline(always)]
@@ -23,20 +23,7 @@ fn asdouble(u: u64) -> f64 {
     f64::from_bits(u)
 }
 
-#[inline(always)]
-fn roundeven_finite(x: f64) -> f64 {
-    rint(x)
-}
-
 // === ddcoremath helpers (ported) ===
-
-#[inline(always)]
-fn fasttwosum(x: f64, y: f64, e: &mut f64) -> f64 {
-    let s = x + y;
-    let z = s - x;
-    *e = y - z;
-    s
-}
 
 #[inline(always)]
 fn fasttwosub(x: f64, y: f64, e: &mut f64) -> f64 {

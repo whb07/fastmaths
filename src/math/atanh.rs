@@ -5,7 +5,7 @@
 //! <= 1 ULP accuracy with good throughput.
 
 use super::atanh_data::{CH, CL};
-use super::{copysign, fma_internal};
+use super::{copysign, fasttwosum, fma_internal};
 use super::{log::ln, log1p};
 
 const TINY_BITS: u64 = 0x3e4d_12ed_0af1_a27f; // 0x1.d12ed0af1a27fp-27
@@ -44,14 +44,6 @@ fn asuint64(x: f64) -> u64 {
 #[inline(always)]
 fn asdouble(x: u64) -> f64 {
     f64::from_bits(x)
-}
-
-#[inline(always)]
-fn fasttwosum(x: f64, y: f64, e: &mut f64) -> f64 {
-    let s = x + y;
-    let z = s - x;
-    *e = y - z;
-    s
 }
 
 #[inline(always)]

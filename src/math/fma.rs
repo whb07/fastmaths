@@ -4,15 +4,7 @@
 //! Falls back to a software-fused path using Dekker splitting (2^27+1) to
 //! track the product error and preserve correct rounding without libm.
 
-const SPLIT: f64 = 134_217_729.0; // 2^27 + 1
-
-#[inline(always)]
-fn two_sum(a: f64, b: f64) -> (f64, f64) {
-    let s = a + b;
-    let bb = s - a;
-    let err = (a - (s - bb)) + (b - bb);
-    (s, err)
-}
+use super::{SPLIT, two_sum};
 
 #[inline(always)]
 fn split(a: f64) -> (f64, f64) {

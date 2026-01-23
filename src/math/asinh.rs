@@ -3,15 +3,7 @@
 //! Piecewise algorithm: |x| small -> x; medium -> log1p(x + x^2/(1+sqrt(1+x^2)));
 //! large -> log(2x). Designed to avoid cancellation and overflow.
 
-use super::{fma_internal, ln, log1p, sqrt};
-
-#[inline(always)]
-fn two_sum(a: f64, b: f64) -> (f64, f64) {
-    let s = a + b;
-    let bb = s - a;
-    let err = (a - (s - bb)) + (b - bb);
-    (s, err)
-}
+use super::{fma_internal, ln, log1p, sqrt, two_sum};
 
 #[inline(always)]
 pub fn asinh(x: f64) -> f64 {

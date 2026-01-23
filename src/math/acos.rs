@@ -4,11 +4,7 @@
 //! around sqrt((1±x)/2) for |x|>0.5. Constants include split pi/2 hi/lo parts
 //! for extra precision.
 
-use super::sqrt;
-
-#[allow(clippy::approx_constant)]
-const PIO2_HI: f64 = 1.570_796_326_794_896_558_00e+00;
-const PIO2_LO: f64 = 6.123_233_995_736_766_035_87e-17;
+use super::{PIO2_HI, PIO2_LO, sqrt};
 const PS0: f64 = 1.666_666_666_666_666_574_15e-01;
 const PS1: f64 = -3.255_658_186_224_009_154_05e-01;
 const PS2: f64 = 2.012_125_321_348_629_258_81e-01;

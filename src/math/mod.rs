@@ -58,6 +58,7 @@ mod tan;
 mod tanh;
 mod trig;
 mod utan_tables;
+mod utils;
 
 pub use acos::acos;
 pub use acosh::acosh;
@@ -105,6 +106,9 @@ pub use sqrt::sqrt;
 pub use tan::tan;
 pub use tanh::tanh;
 pub use trig::sincos;
+pub(crate) use utils::{
+    LN2_HI, LN2_LO, PIO2_HI, PIO2_LO, SPLIT, TWO54, fasttwosum, roundeven_finite, two_sum,
+};
 
 // ========= bit helpers =========
 
@@ -143,7 +147,6 @@ fn fma_soft(a: f64, b: f64, c: f64) -> f64 {
     if !p.is_finite() {
         return p + c;
     }
-    const SPLIT: f64 = 134_217_729.0; // 2^27 + 1
     let max = f64::MAX / SPLIT;
     if a.abs() > max || b.abs() > max {
         return p + c;

@@ -4,7 +4,7 @@
 //! (5-bit index) and a minimax polynomial in the reduced variable. FMA is used
 //! where available for error-compensated evaluation; constants from glibc/core-math.
 
-use super::{f64_from_bits, f64_to_bits};
+use super::{LN2_HI, LN2_LO, f64_from_bits, f64_to_bits};
 
 // ========= glibc-derived log tables (N=128) =========
 
@@ -537,9 +537,6 @@ const LOG_CLO_U64: [u64; 128] = [
 ];
 
 // ========= ln(x) =========
-
-const LN2_HI: f64 = f64::from_bits(0x3fe62e42fefa3800);
-const LN2_LO: f64 = f64::from_bits(0x3d2ef35793c76730);
 
 const LOG_A0: f64 = f64::from_bits(0xbfe0000000000001);
 const LOG_A1: f64 = f64::from_bits(0x3fd555555551305b);

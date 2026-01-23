@@ -3,15 +3,7 @@
 //! Piecewise algorithm for x>=1: near 1 uses log1p with sqrt(x-1); moderate
 //! uses log(2x) + correction; large values avoid loss of precision.
 
-use super::{fma_internal, ln, log1p, sqrt};
-
-#[inline(always)]
-fn two_sum(a: f64, b: f64) -> (f64, f64) {
-    let s = a + b;
-    let bb = s - a;
-    let err = (a - (s - bb)) + (b - bb);
-    (s, err)
-}
+use super::{fma_internal, ln, log1p, sqrt, two_sum};
 
 #[inline(always)]
 pub fn acosh(x: f64) -> f64 {

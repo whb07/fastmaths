@@ -4,11 +4,7 @@
 //! log(1+x) with compensated argument reduction. Coefficients are derived from
 //! glibc/fdlibm minimax fits.
 
-use super::{hi_word, lo_word, with_hi_lo};
-
-const LN2_HI: f64 = 6.931_471_803_691_238_164_90e-01;
-const LN2_LO: f64 = 1.908_214_929_270_587_700_02e-10;
-const TWO54: f64 = 1.801_439_850_948_198_400_00e16;
+use super::{LN2_HI, LN2_LO, TWO54, hi_word, lo_word, with_hi_lo};
 const LP: [f64; 8] = [
     0.0,
     6.666_666_666_666_735_130e-01,
