@@ -22,8 +22,9 @@ pub fn acosh(x: f64) -> f64 {
         return f64::NAN;
     }
 
-    if e < 0x3ff + 1 {
-        // 1 <= x < 2
+    const NEAR_ONE_CUTOFF: f64 = f64::from_bits(0x3ff1e83e425aee63);
+    if x < NEAR_ONE_CUTOFF {
+        // 1 <= x < ~1.117: log1p with compensated sqrt for best near-1 accuracy.
         let t = x - 1.0;
         let z = fma_internal(t, t, 2.0 * t);
         let s = sqrt(z);
@@ -32,9 +33,27 @@ pub fn acosh(x: f64) -> f64 {
         } else {
             0.0
         };
-        let (sum_hi, sum_lo) = two_sum(t, s);
+        let (s_hi, s_lo) = two_sum(s, sqrt_corr);
+        let (sum_hi, sum_lo) = two_sum(t, s_hi);
         let y = log1p(sum_hi);
-        return y + (sum_lo + sqrt_corr) / (1.0 + sum_hi);
+        return y + (sum_lo + s_lo) / (1.0 + sum_hi);
+    }
+    if e < 0x3ff + 1 {
+        // 1 <= x < 2: ln(x + sqrt(x^2 - 1)) with compensated sum.
+        let x2 = x * x;
+        let wh = x2 - 1.0;
+        let wl = fma_internal(x, x, -x2);
+        let sh = sqrt(wh);
+        let sl = if sh != 0.0 {
+            let ish = 0.5 / wh;
+            (wl - fma_internal(sh, sh, -wh)) * (sh * ish)
+        } else {
+            0.0
+        };
+        let (th, tl0) = two_sum(x, sh);
+        let tl = tl0 + sl;
+        let y = ln(th);
+        return y + tl / th;
     }
     if e < 0x3ff + 26 {
         // x < 2^26

@@ -2698,6 +2698,14 @@ mod tests {
     }
 
     #[test]
+    fn sinh_regression_case_seed() {
+        let x = 0.8697034726629151_f64;
+        let actual = fastlibm::sinh(x);
+        let expected = sinh_reference(x);
+        assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("sinh({x})"));
+    }
+
+    #[test]
     fn asinh_acosh_atanh_special_cases() {
         assert!(fastlibm::asinh(f64::NAN).is_nan());
         assert!(fastlibm::acosh(f64::NAN).is_nan());
@@ -2718,6 +2726,14 @@ mod tests {
         let actual = fastlibm::atanh(x);
         let expected = atanh_reference(x);
         assert_ulp_eq(actual, expected, ATANH_ULP_TOL, &format!("atanh({x})"));
+    }
+
+    #[test]
+    fn acosh_regression_case_seed() {
+        let x = 1.1226630563945177_f64;
+        let actual = fastlibm::acosh(x);
+        let expected = acosh_reference(x);
+        assert_ulp_eq(actual, expected, DERIVED_ULP_TOL, &format!("acosh({x})"));
     }
 
     #[test]
