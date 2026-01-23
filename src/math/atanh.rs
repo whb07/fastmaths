@@ -5,7 +5,7 @@
 //! <= 1 ULP accuracy with good throughput.
 
 use super::atanh_data::{CH, CL};
-use super::{asdouble, copysign, fasttwosum, fma_wrap};
+use super::{asdouble, copysign, fasttwosum, fma_internal};
 use super::{log::ln, log1p};
 
 const TINY_BITS: u64 = 0x3e4d_12ed_0af1_a27f; // 0x1.d12ed0af1a27fp-27
@@ -41,7 +41,7 @@ fn muldd_acc(xh: f64, xl: f64, ch: f64, cl: f64, l: &mut f64) -> f64 {
     let ahlh = ch * xl;
     let alhh = cl * xh;
     let ahhh = ch * xh;
-    let mut ahhl = fma_wrap(ch, xh, -ahhh);
+    let mut ahhl = fma_internal(ch, xh, -ahhh);
     ahhl += alhh + ahlh;
     let chh = ahhh + ahhl;
     *l = (ahhh - chh) + ahhl;
@@ -53,7 +53,7 @@ fn muldd_acc2(xh: f64, xl: f64, ch: f64, cl: f64, l: &mut f64) -> f64 {
     let ahlh = ch * xl;
     let alhh = cl * xh;
     let ahhh = ch * xh;
-    let mut ahhl = fma_wrap(ch, xh, -ahhh);
+    let mut ahhl = fma_internal(ch, xh, -ahhh);
     ahhl += alhh + ahlh;
     fasttwosum(ahhh, ahhl, l)
 }
@@ -61,7 +61,7 @@ fn muldd_acc2(xh: f64, xl: f64, ch: f64, cl: f64, l: &mut f64) -> f64 {
 #[inline(always)]
 fn mulddd3(xh: f64, xl: f64, ch: f64, l: &mut f64) -> f64 {
     let hh = xh * ch;
-    *l = fma_wrap(ch, xh, -hh) + xl * ch;
+    *l = fma_internal(ch, xh, -hh) + xl * ch;
     hh
 }
 
@@ -86,7 +86,7 @@ fn polydd3(xh: f64, xl: f64, n: usize, c: &[[f64; 2]], l: &mut f64) -> f64 {
 #[inline(always)]
 fn as_atanh_zero(x: f64) -> f64 {
     let x2 = x * x;
-    let x2l = fma_wrap(x, x, -x2);
+    let x2l = fma_internal(x, x, -x2);
     let y2 = x2 * (CL[0] + x2 * (CL[1] + x2 * (CL[2] + x2 * (CL[3] + x2 * (CL[4])))));
     let mut y2v = y2;
     let mut y1 = polydd3(x2, x2l, CH.len(), CH, &mut y2v);
@@ -129,20 +129,20 @@ pub fn atanh(x: f64) -> f64 {
 
     if aix < SMALL_BITS {
         if aix < TINY_BITS {
-            return fma_wrap(x, f64::from_bits(0x3c80_0000_0000_0000), x);
+            return fma_internal(x, f64::from_bits(0x3c80_0000_0000_0000), x);
         }
         let x2 = x * x;
-        let dx2 = fma_wrap(x, x, -x2);
+        let dx2 = fma_internal(x, x, -x2);
         let x4 = x2 * x2;
         let x3 = x2 * x;
         let x8 = x4 * x4;
-        let dx3 = fma_wrap(x2, x, -x3) + dx2 * x;
+        let dx3 = fma_internal(x2, x, -x3) + dx2 * x;
         let p = (SMALL_C[0] + x2 * SMALL_C[1])
             + x4 * (SMALL_C[2] + x2 * SMALL_C[3])
             + x8 * ((SMALL_C[4] + x2 * SMALL_C[5])
                 + x4 * (SMALL_C[6] + x2 * SMALL_C[7])
                 + x8 * SMALL_C[8]);
-        let t = fma_wrap(x2, p, SMALL_T);
+        let t = fma_internal(x2, p, SMALL_T);
         let mut pl = 0.0;
         let mut ph = fasttwosum(SMALL_BASE, t, &mut pl);
         ph = muldd_acc(ph, pl, x3, dx3, &mut pl);

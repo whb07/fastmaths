@@ -5,7 +5,7 @@
 //! error below 1 ULP in difficult regions. Constants and tables are sourced from
 //! glibc/core-math (see glibc/ directory).
 
-use super::{asdouble, exp, expm1, fasttwosum, fma_wrap, roundeven_finite};
+use super::{asdouble, exp, expm1, fasttwosum, fma_internal, roundeven_finite};
 use super::{floor, rint};
 
 #[inline(always)]
@@ -65,7 +65,7 @@ fn muldd_acc(xh: f64, xl: f64, ch: f64, cl: f64, l: &mut f64) -> f64 {
     let ahlh = ch * xl;
     let alhh = cl * xh;
     let ahhh = ch * xh;
-    let mut ahhl = fma_wrap(ch, xh, -ahhh);
+    let mut ahhl = fma_internal(ch, xh, -ahhh);
     ahhl += alhh + ahlh;
     let chh = ahhh + ahhl;
     *l = (ahhh - chh) + ahhl;
@@ -77,7 +77,7 @@ fn muldd_acc2(xh: f64, xl: f64, ch: f64, cl: f64, l: &mut f64) -> f64 {
     let ahlh = ch * xl;
     let alhh = cl * xh;
     let ahhh = ch * xh;
-    let mut ahhl = fma_wrap(ch, xh, -ahhh);
+    let mut ahhl = fma_internal(ch, xh, -ahhh);
     ahhl += alhh + ahlh;
     fasttwosum(ahhh, ahhl, l)
 }
@@ -85,14 +85,14 @@ fn muldd_acc2(xh: f64, xl: f64, ch: f64, cl: f64, l: &mut f64) -> f64 {
 #[inline(always)]
 fn muldd2(xh: f64, xl: f64, ch: f64, cl: f64, l: &mut f64) -> f64 {
     let ahhh = ch * xh;
-    *l = (ch * xl + cl * xh) + fma_wrap(ch, xh, -ahhh);
+    *l = (ch * xl + cl * xh) + fma_internal(ch, xh, -ahhh);
     ahhh
 }
 
 #[inline(always)]
 fn muldd3(xh: f64, xl: f64, yh: f64, yl: f64, l: &mut f64) -> f64 {
     let ch = xh * yh;
-    let cl1 = fma_wrap(xh, yh, -ch);
+    let cl1 = fma_internal(xh, yh, -ch);
     let tl0 = xl * yl;
     let tl1 = tl0 + xh * yl;
     let cl2 = tl1 + xl * yh;
@@ -104,7 +104,7 @@ fn muldd3(xh: f64, xl: f64, yh: f64, yl: f64, l: &mut f64) -> f64 {
 fn mulddd(xh: f64, xl: f64, ch: f64, l: &mut f64) -> f64 {
     let ahlh = ch * xl;
     let ahhh = ch * xh;
-    let mut ahhl = fma_wrap(ch, xh, -ahhh);
+    let mut ahhl = fma_internal(ch, xh, -ahhh);
     ahhl += ahlh;
     let chh = ahhh + ahhl;
     *l = (ahhh - chh) + ahhl;
@@ -114,14 +114,14 @@ fn mulddd(xh: f64, xl: f64, ch: f64, l: &mut f64) -> f64 {
 #[inline(always)]
 fn mulddd2(x: f64, ch: f64, cl: f64, l: &mut f64) -> f64 {
     let ahhh = ch * x;
-    *l = cl * x + fma_wrap(ch, x, -ahhh);
+    *l = cl * x + fma_internal(ch, x, -ahhh);
     ahhh
 }
 
 #[inline(always)]
 fn mulddd3(xh: f64, xl: f64, ch: f64, l: &mut f64) -> f64 {
     let hh = xh * ch;
-    *l = fma_wrap(ch, xh, -hh) + xl * ch;
+    *l = fma_internal(ch, xh, -hh) + xl * ch;
     hh
 }
 
@@ -4518,9 +4518,9 @@ fn as_logd(x: f64, l: &mut f64) -> f64 {
     let r = LOG_R1[i1] * LOG_R2[i2];
     let tf = asdouble(t);
     let o = r * tf;
-    let dxl = fma_wrap(r, tf, -o);
+    let dxl = fma_internal(r, tf, -o);
     let dxh = o - 1.0;
-    let dx = fma_wrap(r, tf, -1.0);
+    let dx = fma_internal(r, tf, -1.0);
     let dx2 = dx * dx;
     let f = dx2 * ((LOG_C[0] + dx * LOG_C[1]) + dx2 * (LOG_C[2] + dx * LOG_C[3]));
     let lt = (LOG_L1[i1][1] + LOG_L2[i2][1]) + ed * f64::from_bits(0x3fe62e42fef80000);
@@ -4556,7 +4556,7 @@ fn as_logd_accurate(x: f64, l: &mut f64, l2: &mut f64) -> f64 {
     let r = LOG_R1[i1] * LOG_R2[i2];
     let tf = asdouble(t);
     let o = r * tf;
-    let dxl = fma_wrap(r, tf, -o);
+    let dxl = fma_internal(r, tf, -o);
     let mut dxh = o - 1.0;
 
     let mut dxl2 = 0.0;
@@ -4595,7 +4595,7 @@ fn as_sinpipid(mut x: f64, l: &mut f64) -> f64 {
     if kx < 2 {
         let z = 0.5 - ax;
         let z2 = z * z;
-        let z2l = fma_wrap(z, z, -z2);
+        let z2l = fma_internal(z, z, -z2);
         let mut fl = z2 * (SINPID_CL_NEAR[0] + z2 * (SINPID_CL_NEAR[1] + z2 * SINPID_CL_NEAR[2]));
         let mut e = 0.0;
         let mut fh = fasttwosum(SINPID_C_NEAR[0], fl, &mut fl);
@@ -4654,7 +4654,7 @@ fn as_sinpipid_accurate(mut x: f64, l: &mut f64) -> f64 {
     let mut cl = STPI[ky as usize][0];
 
     let d2h = d * d;
-    let d2l = fma_wrap(d, d, -d2h);
+    let d2l = fma_internal(d, d, -d2h);
     let mut pl = 0.0;
     let mut ph = polydd2(d2h, d2l, SINPID_ACC_C.len(), &SINPID_ACC_C, &mut pl);
     let mut ql = 0.0;
@@ -4764,7 +4764,7 @@ const LGAMMA_ASYM_C_SMALL: [[f64; 2]; 13] = [
 fn as_lgamma_asym(xh: f64, xl: &mut f64) -> f64 {
     let zh = 1.0 / xh;
     let dz = *xl * zh;
-    let zl = (fma_wrap(zh, -xh, 1.0) - dz) * zh;
+    let zl = (fma_internal(zh, -xh, 1.0) - dz) * zh;
     let mut ll = 0.0;
     let mut lh = as_logd(xh, &mut ll);
     ll += dz;
@@ -4813,10 +4813,10 @@ fn as_lgamma_asym_accurate(xh: f64, xl: &mut f64, e: &mut f64) -> f64 {
         // 0x1p120
         let zh = 1.0 / xh;
         let dz = *xl * zh;
-        let zl = (fma_wrap(zh, -xh, 1.0) - dz) * zh;
+        let zl = (fma_internal(zh, -xh, 1.0) - dz) * zh;
         if *xl != 0.0 {
             let mut dl2 = 0.0;
-            let dl1 = mulddd2(*xl, zh, fma_wrap(zh, -xh, 1.0) * zh, &mut dl2);
+            let dl1 = mulddd2(*xl, zh, fma_internal(zh, -xh, 1.0) * zh, &mut dl2);
             dl2 -= dl1 * dl1 * 0.5;
             l1 = sumdd(l1, l2, dl1, dl2, &mut l2);
         }
@@ -4829,9 +4829,9 @@ fn as_lgamma_asym_accurate(xh: f64, xl: &mut f64, e: &mut f64) -> f64 {
         l0 -= 1.0;
 
         l0x = l0 * wh;
-        let l0xl = fma_wrap(l0, wh, -l0x);
+        let l0xl = fma_internal(l0, wh, -l0x);
         l1x = l1 * wh;
-        let l1xl = fma_wrap(l1, wh, -l1x);
+        let l1xl = fma_internal(l1, wh, -l1x);
         l2x = l2 * wh;
 
         l1x = sumdd(l1x, l2x, l0xl, l1xl, &mut l2x);
@@ -4899,9 +4899,9 @@ fn as_lgamma_asym_accurate(xh: f64, xl: &mut f64, e: &mut f64) -> f64 {
         let wl = *xl - 0.5;
         l0 -= 1.0;
         l0x = l0 * xh;
-        let l0xl = fma_wrap(l0, xh, -l0x);
+        let l0xl = fma_internal(l0, xh, -l0x);
         l1x = l1 * xh;
-        let l1xl = fma_wrap(l1, xh, -l1x);
+        let l1xl = fma_internal(l1, xh, -l1x);
         l2x = l2 * xh;
         l1x = sumdd(l1x, l2x, l0xl, l1xl, &mut l2x);
         l1x = sumdd(l1x, l2x, l0 * wl, l1 * wl, &mut l2x);
@@ -5184,9 +5184,9 @@ fn tgamma_fast(x: f64) -> Option<f64> {
         let mut cl = x * c0;
         let ch = polyddd(x, TGAMMA_SMALL_CC.len(), &TGAMMA_SMALL_CC, &mut cl);
         let mut fh = 1.0 / x;
-        let dh = fma_wrap(fh, -x, 1.0);
+        let dh = fma_internal(fh, -x, 1.0);
         let mut fl = dh * fh;
-        let mut fll = fma_wrap(fl, -x, dh) * fh;
+        let mut fll = fma_internal(fl, -x, dh) * fh;
         fl = sumdd(fl, fll, ch, cl, &mut fll);
         fl = twosum(fl, fll, &mut fll);
         fh = fasttwosum(fh, fl, &mut fl);
@@ -5249,7 +5249,7 @@ fn tgamma_fast(x: f64) -> Option<f64> {
         let mut pl = 0.0;
         let ph = muldd2(sh, sl, yh, yl, &mut pl);
         let rh = 1.0 / ph;
-        let rl = (fma_wrap(rh, -ph, 1.0) - pl * rh) * rh;
+        let rl = (fma_internal(rh, -ph, 1.0) - pl * rh) * rh;
         let eps =
             rh * (f64::from_bits(0x3bbeb2049057bc61) - x * f64::from_bits(0x3b661019f74442b7));
         let ub = rh + (rl + eps);
@@ -5303,7 +5303,7 @@ fn tgamma_fast(x: f64) -> Option<f64> {
         }
     }
     let rh = 1.0 / wh;
-    let rl = (fma_wrap(rh, -wh, 1.0) - wl * rh) * rh;
+    let rl = (fma_internal(rh, -wh, 1.0) - wl * rh) * rh;
     fh = muldd2(rh, rl, fh, fl, &mut fl);
     let eps = fh * TGAMMA_EPS;
     let ub = fh + (fl + eps);
@@ -5373,7 +5373,7 @@ fn tgamma_quarter_dd(x: f64, frac: f64) -> (f64, f64) {
         for k in 1..=(-n) {
             let d = base - k as f64;
             let inv = 1.0 / d;
-            let inv_err = fma_wrap(inv, d, -1.0) * inv;
+            let inv_err = fma_internal(inv, d, -1.0) * inv;
             let mut l = 0.0;
             hi = muldd2(hi, lo, inv, inv_err, &mut l);
             lo = l;
@@ -5919,7 +5919,7 @@ fn ieee754_lgamma_r(x: f64, signgamp: &mut i32) -> f64 {
             if ax < f64::from_bits(0x47b0000000000000) {
                 // 0x1p100
                 let zh = 1.0 / ax;
-                let zl = fma_wrap(zh, -ax, 1.0) * zh;
+                let zl = fma_internal(zh, -ax, 1.0) * zh;
                 let z2h = zh * zh;
                 let z4h = z2h * z2h;
                 let q0 = LGAMMA_ASYM_Q[0] + z2h * LGAMMA_ASYM_Q[1];
@@ -6033,9 +6033,9 @@ fn tgamma_slow(x: f64) -> f64 {
             let mut pl = 0.0;
             let ph = muldd2(sh, sl, yh, yl, &mut pl);
             let mut r = 1.0 / ph;
-            let mut e = fma_wrap(ph, r, -1.0) + pl * r;
+            let mut e = fma_internal(ph, r, -1.0) + pl * r;
             r -= r * e;
-            e = fma_wrap(ph, r, -1.0) + pl * r;
+            e = fma_internal(ph, r, -1.0) + pl * r;
             r -= r * e;
             return r;
         }

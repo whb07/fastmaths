@@ -107,8 +107,7 @@ pub use tan::tan;
 pub use tanh::tanh;
 pub use trig::sincos;
 pub(crate) use utils::{
-    LN2_HI, LN2_LO, PIO2_HI, PIO2_LO, SPLIT, TWO54, asdouble, fasttwosum, fma_wrap,
-    roundeven_finite, two_sum,
+    LN2_HI, LN2_LO, PIO2_HI, PIO2_LO, SPLIT, TWO54, asdouble, fasttwosum, roundeven_finite, two_sum,
 };
 
 // ========= bit helpers =========

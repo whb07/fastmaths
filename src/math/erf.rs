@@ -4,7 +4,7 @@
 //! double-double arithmetic for correctly rounded results (<= 1 ULP).
 //! Constants and tables are sourced from glibc/core-math (see glibc/).
 
-use super::{asdouble, copysign, floor, fma_wrap, ldexp, roundeven_finite};
+use super::{asdouble, copysign, floor, fma_internal, ldexp, roundeven_finite};
 use super::{erf_data, erfc_data};
 
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
@@ -38,22 +38,22 @@ fn two_sum(hi: &mut f64, lo: &mut f64, a: f64, b: f64) {
 #[inline(always)]
 fn a_mul(hi: &mut f64, lo: &mut f64, a: f64, b: f64) {
     *hi = a * b;
-    *lo = fma_wrap(a, b, -*hi);
+    *lo = fma_internal(a, b, -*hi);
 }
 
 // Multiply a double with a double-double: a * (bh + bl).
 #[inline(always)]
 fn s_mul(hi: &mut f64, lo: &mut f64, a: f64, bh: f64, bl: f64) {
     a_mul(hi, lo, a, bh);
-    *lo = fma_wrap(a, bl, *lo);
+    *lo = fma_internal(a, bl, *lo);
 }
 
 // Returns (ah + al) * (bh + bl) - (al * bl).
 #[inline(always)]
 fn d_mul(hi: &mut f64, lo: &mut f64, ah: f64, al: f64, bh: f64, bl: f64) {
     a_mul(hi, lo, ah, bh);
-    *lo = fma_wrap(ah, bl, *lo);
-    *lo = fma_wrap(al, bh, *lo);
+    *lo = fma_internal(ah, bl, *lo);
+    *lo = fma_internal(al, bh, *lo);
 }
 
 // Add a + (bh + bl), assuming |a| >= |bh|.
@@ -71,9 +71,9 @@ fn cr_erf_fast(h: &mut f64, l: &mut f64, mut z: f64) -> f64 {
         let mut z2l = 0.0;
         a_mul(&mut z2h, &mut z2l, z, z);
         let z4 = z2h * z2h;
-        let c9 = fma_wrap(erf_data::C0[7], z2h, erf_data::C0[6]);
-        let c5 = fma_wrap(erf_data::C0[5], z2h, erf_data::C0[4]);
-        let c5 = fma_wrap(c9, z4, c5);
+        let c9 = fma_internal(erf_data::C0[7], z2h, erf_data::C0[6]);
+        let c5 = fma_internal(erf_data::C0[5], z2h, erf_data::C0[4]);
+        let c5 = fma_internal(c9, z4, c5);
         let mut th = 0.0;
         let mut tl = 0.0;
         a_mul(&mut th, &mut tl, z2h, c5);
@@ -81,11 +81,11 @@ fn cr_erf_fast(h: &mut f64, l: &mut f64, mut z: f64) -> f64 {
         *l += tl + erf_data::C0[3];
         let h_copy = *h;
         a_mul(&mut th, &mut tl, z2h, *h);
-        tl += fma_wrap(z2h, *l, erf_data::C0[1]);
+        tl += fma_internal(z2h, *l, erf_data::C0[1]);
         fast_two_sum(h, l, erf_data::C0[0], th);
-        *l += fma_wrap(z2l, h_copy, tl);
+        *l += fma_internal(z2l, h_copy, tl);
         a_mul(h, &mut tl, *h, z);
-        *l = fma_wrap(*l, z, tl);
+        *l = fma_internal(*l, z, tl);
         return f64::from_bits(0x3ba7800000000000);
     }
 
@@ -95,13 +95,13 @@ fn cr_erf_fast(h: &mut f64, l: &mut f64, mut z: f64) -> f64 {
     let c = &erf_data::C[i - 1];
     let z2 = z * z;
     let z4 = z2 * z2;
-    let c9 = fma_wrap(c[12], z, c[11]);
-    let c7 = fma_wrap(c[10], z, c[9]);
-    let c5 = fma_wrap(c[8], z, c[7]);
+    let c9 = fma_internal(c[12], z, c[11]);
+    let c7 = fma_internal(c[10], z, c[9]);
+    let c5 = fma_internal(c[8], z, c[7]);
     let mut c3h = 0.0;
     let mut c3l = 0.0;
     fast_two_sum(&mut c3h, &mut c3l, c[5], z * c[6]);
-    let c7 = fma_wrap(c9, z2, c7);
+    let c7 = fma_internal(c9, z2, c7);
     let mut tl = 0.0;
     let c3h0 = c3h;
     fast_two_sum(&mut c3h, &mut tl, c3h0, c5 * z2);
@@ -115,12 +115,12 @@ fn cr_erf_fast(h: &mut f64, l: &mut f64, mut z: f64) -> f64 {
     let mut c2h = 0.0;
     let mut c2l = 0.0;
     fast_two_sum(&mut c2h, &mut c2l, c[4], th);
-    c2l += fma_wrap(z, c3l, tl2);
+    c2l += fma_internal(z, c3l, tl2);
     a_mul(&mut th, &mut tl2, z, c2h);
     fast_two_sum(h, l, c[2], th);
-    *l += tl2 + fma_wrap(z, c2l, c[3]);
+    *l += tl2 + fma_internal(z, c2l, c[3]);
     a_mul(&mut th, &mut tl2, z, *h);
-    tl2 = fma_wrap(z, *l, tl2);
+    tl2 = fma_internal(z, *l, tl2);
     fast_two_sum(h, l, c[0], th);
     *l += tl2 + c[1];
     f64::from_bits(0x3ba1100000000000)
@@ -151,27 +151,27 @@ fn cr_erf_accurate_tiny(h: &mut f64, l: &mut f64, z: f64, exceptions: bool) {
     let mut tl = 0.0;
     *h = erf_data::P[21 / 2 + 4];
     for a in (13..=19).rev().step_by(2) {
-        *h = fma_wrap(*h, z2, erf_data::P[a / 2 + 4]);
+        *h = fma_internal(*h, z2, erf_data::P[a / 2 + 4]);
     }
     *l = 0.0;
     for a in (9..=11).rev().step_by(2) {
         a_mul(&mut th, &mut tl, *h, z);
-        tl = fma_wrap(*l, z, tl);
+        tl = fma_internal(*l, z, tl);
         a_mul(h, l, th, z);
-        *l = fma_wrap(tl, z, *l);
+        *l = fma_internal(tl, z, *l);
         fast_two_sum(h, &mut tl, erf_data::P[a / 2 + 4], *h);
         *l += tl;
     }
     for a in (1..=7).rev().step_by(2) {
         a_mul(&mut th, &mut tl, *h, z);
-        tl = fma_wrap(*l, z, tl);
+        tl = fma_internal(*l, z, tl);
         a_mul(h, l, th, z);
-        *l = fma_wrap(tl, z, *l);
+        *l = fma_internal(tl, z, *l);
         fast_two_sum(h, &mut tl, erf_data::P[a - 1], *h);
         *l += erf_data::P[a] + tl;
     }
     a_mul(h, &mut tl, *h, z);
-    *l = fma_wrap(*l, z, tl);
+    *l = fma_internal(*l, z, tl);
 }
 
 // Accurate erf approximation for 0 <= z <= f64::from_bits(0x4017afb48dc96626).
@@ -195,20 +195,20 @@ fn cr_erf_accurate(h: &mut f64, l: &mut f64, z: f64) {
     let p = &erf_data::C2[i - 1];
     *h = p[26];
     for j in (11..=17).rev() {
-        *h = fma_wrap(*h, zz, p[8 + j]);
+        *h = fma_internal(*h, zz, p[8 + j]);
     }
     *l = 0.0;
     let mut th = 0.0;
     let mut tl = 0.0;
     for j in (8..=10).rev() {
         a_mul(&mut th, &mut tl, *h, zz);
-        tl = fma_wrap(*l, zz, tl);
+        tl = fma_internal(*l, zz, tl);
         two_sum(h, l, p[8 + j], th);
         *l += tl;
     }
     for j in (0..=7).rev() {
         a_mul(&mut th, &mut tl, *h, zz);
-        tl = fma_wrap(*l, zz, tl);
+        tl = fma_internal(*l, zz, tl);
         two_sum(h, l, p[2 * j], th);
         *l += p[2 * j + 1] + tl;
     }
@@ -237,9 +237,9 @@ pub fn erf(x: f64) -> f64 {
         let mut h = 0.0;
         let mut l = 0.0;
         a_mul(&mut h, &mut l, erf_data::C0[0], sx);
-        l = fma_wrap(erf_data::C0[1], sx, l);
+        l = fma_internal(erf_data::C0[1], sx, l);
         l += h - y * f64::from_bits(0x4690000000000000);
-        return fma_wrap(l, f64::from_bits(0x3950000000000000), y);
+        return fma_internal(l, f64::from_bits(0x3950000000000000), y);
     }
 
     let mut h = 0.0;
@@ -252,8 +252,8 @@ pub fn erf(x: f64) -> f64 {
     v ^= t & SIGN_MASK;
     let uf = asdouble(u);
     let vf = asdouble(v);
-    let left = uf + fma_wrap(err, -uf, vf);
-    let right = uf + fma_wrap(err, uf, vf);
+    let left = uf + fma_internal(err, -uf, vf);
+    let right = uf + fma_internal(err, uf, vf);
     if left == right {
         return left;
     }
@@ -265,8 +265,8 @@ pub fn erf(x: f64) -> f64 {
 #[inline(always)]
 fn q_1(hi: &mut f64, lo: &mut f64, zh: f64, zl: f64) {
     let z = zh + zl;
-    let mut q = fma_wrap(erf_data::Q_1[4], zh, erf_data::Q_1[3]);
-    q = fma_wrap(q, z, erf_data::Q_1[2]);
+    let mut q = fma_internal(erf_data::Q_1[4], zh, erf_data::Q_1[3]);
+    q = fma_internal(q, z, erf_data::Q_1[2]);
     fast_two_sum(hi, lo, erf_data::Q_1[1], q * z);
     d_mul(hi, lo, zh, zl, *hi, *lo);
     fast_sum(hi, lo, erf_data::Q_1[0], *hi, *lo);
@@ -313,33 +313,33 @@ fn exp_accurate(h: &mut f64, l: &mut f64, e: &mut i32, xh: f64, xl: f64) {
     const LOG2H: f64 = f64::from_bits(0x3fe62e42fefa39ef);
     const LOG2L: f64 = f64::from_bits(0x3c7abc9e3b398000);
     const LOG2T: f64 = f64::from_bits(0x398f97b57a079a19);
-    let mut yh = fma_wrap(-(k as f64), LOG2H, xh);
+    let mut yh = fma_internal(-(k as f64), LOG2H, xh);
     let mut th = 0.0;
     let mut tl = 0.0;
     two_sum(&mut th, &mut tl, -(k as f64) * LOG2L, xl);
     let mut yl = 0.0;
     let yh0 = yh;
     fast_two_sum(&mut yh, &mut yl, yh0, th);
-    yl = fma_wrap(-(k as f64), LOG2T, yl + tl);
+    yl = fma_internal(-(k as f64), LOG2T, yl + tl);
     *h = erfc_data::E2[19 + 8];
     for i in (16..=18).rev() {
-        *h = fma_wrap(*h, yh, erfc_data::E2[i + 8]);
+        *h = fma_internal(*h, yh, erfc_data::E2[i + 8]);
     }
     a_mul(&mut th, &mut tl, *h, yh);
-    tl = fma_wrap(*h, yl, tl);
+    tl = fma_internal(*h, yl, tl);
     fast_two_sum(h, l, erfc_data::E2[15 + 8], th);
     *l += tl;
     for i in (8..=14).rev() {
         a_mul(&mut th, &mut tl, *h, yh);
-        tl = fma_wrap(*h, yl, tl);
-        tl = fma_wrap(*l, yh, tl);
+        tl = fma_internal(*h, yl, tl);
+        tl = fma_internal(*l, yh, tl);
         fast_two_sum(h, l, erfc_data::E2[i + 8], th);
         *l += tl;
     }
     for i in (0..=7).rev() {
         a_mul(&mut th, &mut tl, *h, yh);
-        tl = fma_wrap(*h, yl, tl);
-        tl = fma_wrap(*l, yh, tl);
+        tl = fma_internal(*h, yl, tl);
+        tl = fma_internal(*l, yh, tl);
         fast_two_sum(h, l, erfc_data::E2[2 * i], th);
         *l += tl + erfc_data::E2[2 * i + 1];
     }
@@ -361,7 +361,7 @@ fn erfc_asympt_fast(h: &mut f64, l: &mut f64, x: f64) -> f64 {
     a_mul(&mut uh, &mut ul, x, x);
     exp_1(&mut eh, &mut el, -uh, -ul);
     let yh = 1.0 / x;
-    let yl = yh * fma_wrap(-x, yh, 1.0);
+    let yl = yh * fma_internal(-x, yh, 1.0);
     const THRESHOLD: [f64; 6] = [
         f64::from_bits(0x3fbd500000000000),
         f64::from_bits(0x3fc59da6ca291ba6),
@@ -376,10 +376,10 @@ fn erfc_asympt_fast(h: &mut f64, l: &mut f64, x: f64) -> f64 {
     }
     let p = &erfc_data::T[i];
     a_mul(&mut uh, &mut ul, yh, yh);
-    ul = fma_wrap(2.0 * yh, yl, ul);
+    ul = fma_internal(2.0 * yh, yl, ul);
     let mut zh = p[12];
-    zh = fma_wrap(zh, uh, p[11]);
-    zh = fma_wrap(zh, uh, p[10]);
+    zh = fma_internal(zh, uh, p[11]);
+    zh = fma_internal(zh, uh, p[10]);
     s_mul(h, l, zh, uh, ul);
     let mut zl = 0.0;
     fast_two_sum(&mut zh, &mut zl, p[9], *h);
@@ -435,7 +435,7 @@ fn erfc_asympt_accurate(x: f64) -> f64 {
         }
     }
     if x == f64::from_bits(0x403a8f7bfbd15495) {
-        return fma_wrap(
+        return fma_internal(
             f64::from_bits(0x0000000000000001),
             -0.25,
             f64::from_bits(0x000667bd620fd95b),
@@ -451,7 +451,7 @@ fn erfc_asympt_accurate(x: f64) -> f64 {
     let mut e = 0i32;
     exp_accurate(&mut eh, &mut el, &mut e, -uh, -ul);
     let yh = 1.0 / x;
-    let yl = yh * fma_wrap(-x, yh, 1.0);
+    let yl = yh * fma_internal(-x, yh, 1.0);
     const THRESHOLD: [f64; 10] = [
         f64::from_bits(0x3fb4500000000000),
         f64::from_bits(0x3fbe000000000000),
@@ -470,7 +470,7 @@ fn erfc_asympt_accurate(x: f64) -> f64 {
     }
     let p = &erfc_data::TACC[i];
     a_mul(&mut uh, &mut ul, yh, yh);
-    ul = fma_wrap(2.0 * yh, yl, ul);
+    ul = fma_internal(2.0 * yh, yl, ul);
     let mut zh = p[14 + 6 + i];
     let mut zl = 0.0;
     let mut th = 0.0;
@@ -479,8 +479,8 @@ fn erfc_asympt_accurate(x: f64) -> f64 {
     let mut j = top as i32;
     while j >= 13 {
         a_mul(&mut th, &mut tl, zh, uh);
-        tl = fma_wrap(zh, ul, tl);
-        tl = fma_wrap(zl, uh, tl);
+        tl = fma_internal(zh, ul, tl);
+        tl = fma_internal(zl, uh, tl);
         two_sum(&mut zh, &mut zl, p[((j - 1) / 2) as usize + 6], th);
         zl += tl;
         j -= 2;
@@ -488,21 +488,21 @@ fn erfc_asympt_accurate(x: f64) -> f64 {
     let mut j2 = 11;
     while j2 >= 1 {
         a_mul(&mut th, &mut tl, zh, uh);
-        tl = fma_wrap(zh, ul, tl);
-        tl = fma_wrap(zl, uh, tl);
+        tl = fma_internal(zh, ul, tl);
+        tl = fma_internal(zl, uh, tl);
         two_sum(&mut zh, &mut zl, p[(j2 - 1) as usize], th);
         zl += tl + p[j2 as usize];
         j2 -= 2;
     }
     a_mul(&mut uh, &mut ul, zh, yh);
-    ul = fma_wrap(zh, yl, ul);
-    ul = fma_wrap(zl, yh, ul);
+    ul = fma_internal(zh, yl, ul);
+    ul = fma_internal(zl, yh, ul);
     let uh0 = uh;
     let ul0 = ul;
     fast_two_sum(&mut uh, &mut ul, uh0, ul0);
     a_mul(&mut h, &mut l, uh, eh);
-    l = fma_wrap(uh, el, l);
-    l = fma_wrap(ul, eh, l);
+    l = fma_internal(uh, el, l);
+    l = fma_internal(ul, eh, l);
     let mut res = ldexp(h + l, e);
     if res < f64::from_bits(0x0010000000000000) {
         let mut corr = h - ldexp(res, -e);
@@ -560,7 +560,7 @@ pub fn erfc(x: f64) -> f64 {
             return 2.0 - f64::from_bits(0x3c90000000000000);
         }
         if f64::from_bits(0xbc9c5bf891b4ef6a) <= x {
-            return fma_wrap(-x, f64::from_bits(0x3c90000000000000), 1.0);
+            return fma_internal(-x, f64::from_bits(0x3c90000000000000), 1.0);
         }
     } else {
         if at >= 0x403b_39dc_41e4_8bfdu64 {
@@ -573,7 +573,7 @@ pub fn erfc(x: f64) -> f64 {
             return f64::from_bits(0x0000000000000001) * 0.25;
         }
         if x <= f64::from_bits(0x3c8c5bf891b4ef6a) {
-            return fma_wrap(-x, f64::from_bits(0x3c90000000000000), 1.0);
+            return fma_internal(-x, f64::from_bits(0x3c90000000000000), 1.0);
         }
     }
     let mut h = 0.0;
