@@ -10,7 +10,7 @@ const TINY: f64 = 3.725_290_298_461_914e-09; // 2^-28
 const EXP_HI: f64 = 709.782_712_893_384;
 const SINH_OVERFLOW: f64 = 710.475_860_073_943_9;
 const SMALL: f64 = 22.0;
-const EXP_FAST_THRESH: f64 = 2.0;
+const EXP_FAST_THRESH: f64 = 3.0;
 // High-precision split used only for the near-overflow exp(|x| - ln2) path.
 // (This keeps the tail small, which matters for exp_with_tail accuracy.)
 const LN2_HI_PRECISE: f64 = f64::from_bits(0x3fe6_2e42_fefa_3800);

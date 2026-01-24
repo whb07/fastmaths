@@ -2842,26 +2842,30 @@ mod tests {
 
     #[test]
     fn sinh_regression_medium_range() {
-        // MPFR proptest regression in the 1<=|x|<22 path.
-        let x = -1.408992436517082_f64;
-        let actual = fastmaths::sinh(x);
-        let expected = sinh_reference(x);
-        assert_ulp_eq(
-            actual,
-            expected,
-            DERIVED_ULP_TOL,
-            &format_case("sinh", x, "regression"),
-        );
+        // MPFR proptest regressions in the 1<=|x|<22 path.
+        for &x in &[
+            1.408992436517082_f64,
+            2.0854509241613868_f64,
+        ] {
+            let actual = fastmaths::sinh(x);
+            let expected = sinh_reference(x);
+            assert_ulp_eq(
+                actual,
+                expected,
+                DERIVED_ULP_TOL,
+                &format_case("sinh", x, "regression"),
+            );
 
-        let xp = -x;
-        let actual = fastmaths::sinh(xp);
-        let expected = sinh_reference(xp);
-        assert_ulp_eq(
-            actual,
-            expected,
-            DERIVED_ULP_TOL,
-            &format_case("sinh", xp, "regression"),
-        );
+            let xn = -x;
+            let actual = fastmaths::sinh(xn);
+            let expected = sinh_reference(xn);
+            assert_ulp_eq(
+                actual,
+                expected,
+                DERIVED_ULP_TOL,
+                &format_case("sinh", xn, "regression"),
+            );
+        }
     }
 
     #[test]
