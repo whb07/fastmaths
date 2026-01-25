@@ -12,6 +12,7 @@
 
 mod acos;
 mod acosh;
+mod arch;
 mod asin;
 mod asinh;
 mod atan;
@@ -59,7 +60,6 @@ mod tanh;
 mod trig;
 mod utan_tables;
 mod utils;
-mod arch;
 
 pub use acos::acos;
 pub use acosh::acosh;
@@ -112,8 +112,7 @@ pub(crate) use utils::{
 };
 
 const HAS_FMA: bool = !cfg!(feature = "soft-fma")
-    && (cfg!(target_arch = "aarch64")
-        || cfg!(any(target_arch = "x86_64", target_arch = "x86")));
+    && (cfg!(target_arch = "aarch64") || cfg!(any(target_arch = "x86_64", target_arch = "x86")));
 
 // ========= bit helpers =========
 
