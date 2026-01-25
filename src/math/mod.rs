@@ -112,6 +112,7 @@ pub(crate) use utils::{
 
 // ========= bit helpers =========
 
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 use core::sync::atomic::{AtomicU8, Ordering};
 
 #[inline(always)]
@@ -136,6 +137,23 @@ unsafe fn fma_hw(a: f64, b: f64, c: f64) -> f64 {
         use core::arch::x86::{_mm_cvtsd_f64, _mm_fmadd_sd, _mm_set_sd};
         _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(a), _mm_set_sd(b), _mm_set_sd(c)))
     }
+}
+
+#[cfg(target_arch = "aarch64")]
+#[inline(always)]
+unsafe fn fma_hw(a: f64, b: f64, c: f64) -> f64 {
+    let out: f64;
+    unsafe {
+        core::arch::asm!(
+            "fmadd {out:d}, {a:d}, {b:d}, {c:d}",
+            out = out(vreg) out,
+            a = in(vreg) a,
+            b = in(vreg) b,
+            c = in(vreg) c,
+            options(pure, nomem, nostack)
+        );
+    }
+    out
 }
 
 #[inline(always)]
@@ -164,6 +182,14 @@ fn fma_soft(a: f64, b: f64, c: f64) -> f64 {
     s + t
 }
 
+#[cfg(target_arch = "aarch64")]
+#[inline(always)]
+fn fma_internal(a: f64, b: f64, c: f64) -> f64 {
+    // Safety: aarch64 always supports fused multiply-add.
+    unsafe { fma_hw(a, b, c) }
+}
+
+#[cfg(not(target_arch = "aarch64"))]
 #[inline(always)]
 fn fma_internal(a: f64, b: f64, c: f64) -> f64 {
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]

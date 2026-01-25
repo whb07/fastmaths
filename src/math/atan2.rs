@@ -15,6 +15,9 @@ fn div_hi_lo(n: f64, d: f64) -> (f64, f64) {
     if !r0.is_finite() {
         return (r0, 0.0);
     }
+    if n.is_subnormal() || d.is_subnormal() {
+        return (r0, 0.0);
+    }
     let err = fma_internal(-r0, d, n);
     (r0, err / d)
 }

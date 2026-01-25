@@ -96,13 +96,32 @@ pub fn nearbyint(x: f64) -> f64 {
 
 #[inline(always)]
 fn clamp_i64(x: f64) -> i64 {
-    if !x.is_finite() {
-        return i64::MIN;
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+    {
+        if x.is_nan() {
+            return 0;
+        }
+        if x.is_infinite() {
+            return if x.is_sign_negative() { i64::MIN } else { i64::MAX };
+        }
+        if x > i64::MAX as f64 {
+            return i64::MAX;
+        }
+        if x < i64::MIN as f64 {
+            return i64::MIN;
+        }
+        return x as i64;
     }
-    if x > i64::MAX as f64 || x < i64::MIN as f64 {
-        i64::MIN
-    } else {
-        x as i64
+    #[cfg(not(any(target_arch = "aarch64", target_arch = "arm")))]
+    {
+        if !x.is_finite() {
+            return i64::MIN;
+        }
+        if x > i64::MAX as f64 || x < i64::MIN as f64 {
+            i64::MIN
+        } else {
+            x as i64
+        }
     }
 }
 
@@ -118,20 +137,46 @@ pub fn llrint(x: f64) -> i64 {
 
 #[inline(always)]
 pub fn lround(x: f64) -> i64 {
-    if !x.is_finite() {
-        return i64::MIN;
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+    {
+        if x.is_nan() {
+            return 0;
+        }
+        if x.is_infinite() {
+            return if x.is_sign_negative() { i64::MIN } else { i64::MAX };
+        }
+    }
+    #[cfg(not(any(target_arch = "aarch64", target_arch = "arm")))]
+    {
+        if !x.is_finite() {
+            return i64::MIN;
+        }
     }
     let ax = x.abs();
     if ax >= TOINT {
         return if ax > i64::MAX as f64 {
-            i64::MIN
+            #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+            {
+                if x.is_sign_negative() { i64::MIN } else { i64::MAX }
+            }
+            #[cfg(not(any(target_arch = "aarch64", target_arch = "arm")))]
+            {
+                i64::MIN
+            }
         } else {
             x as i64
         };
     }
     let y = x + copysign(0.5, x);
     if y > i64::MAX as f64 || y < i64::MIN as f64 {
-        i64::MIN
+        #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+        {
+            if y.is_sign_negative() { i64::MIN } else { i64::MAX }
+        }
+        #[cfg(not(any(target_arch = "aarch64", target_arch = "arm")))]
+        {
+            i64::MIN
+        }
     } else {
         y as i64
     }

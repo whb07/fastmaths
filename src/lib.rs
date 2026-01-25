@@ -228,13 +228,32 @@ mod tests {
     }
 
     fn clamp_f64_to_i64(x: f64) -> i64 {
-        if !x.is_finite() {
-            return i64::MIN;
+        #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+        {
+            if x.is_nan() {
+                return 0;
+            }
+            if x.is_infinite() {
+                return if x.is_sign_negative() { i64::MIN } else { i64::MAX };
+            }
+            if x > i64::MAX as f64 {
+                return i64::MAX;
+            }
+            if x < i64::MIN as f64 {
+                return i64::MIN;
+            }
+            return x as i64;
         }
-        if x > i64::MAX as f64 || x < i64::MIN as f64 {
-            i64::MIN
-        } else {
-            x as i64
+        #[cfg(not(any(target_arch = "aarch64", target_arch = "arm")))]
+        {
+            if !x.is_finite() {
+                return i64::MIN;
+            }
+            if x > i64::MAX as f64 || x < i64::MIN as f64 {
+                i64::MIN
+            } else {
+                x as i64
+            }
         }
     }
 

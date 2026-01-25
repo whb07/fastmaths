@@ -364,7 +364,8 @@ fn exp_generic(x: f64) -> f64 {
     let ki = f64_to_bits(kd);
     let kd = kd - SHIFT;
     let k = kd as i32;
-    let r = x + kd * NEG_LN2_HI_N + kd * NEG_LN2_LO_N;
+    let mut r = fma_internal(kd, NEG_LN2_HI_N, x);
+    r = fma_internal(kd, NEG_LN2_LO_N, r);
 
     let idx = ((ki as usize) & ((N - 1) as usize)) << 1;
     let top = ki << (52 - EXP_TABLE_BITS);
@@ -374,7 +375,10 @@ fn exp_generic(x: f64) -> f64 {
     let scale = f64_from_bits(sbits);
 
     let r2 = r * r;
-    let tmp = tail + r + r2 * (EXP_C2 + r * EXP_C3) + r2 * r2 * (EXP_C4 + r * EXP_C5);
+    let p1 = fma_internal(r, EXP_C3, EXP_C2);
+    let p2 = fma_internal(r, EXP_C5, EXP_C4);
+    let tmp = fma_internal(r2, p1, tail + r);
+    let tmp = fma_internal(r2 * r2, p2, tmp);
     let k_adj = k + (1023 * N as i32);
     if (k_adj as u32) >= (2047 * N as u32) || (k_adj as u32) < (N as u32) {
         return specialcase(tmp, sbits, k as i64);
@@ -408,7 +412,9 @@ pub(crate) fn exp_with_tail_generic(x: f64, xtail: f64) -> f64 {
     let ki = f64_to_bits(kd);
     let kd = kd - SHIFT;
     let k = kd as i32;
-    let r = x + kd * NEG_LN2_HI_N + kd * NEG_LN2_LO_N + xtail;
+    let mut r = fma_internal(kd, NEG_LN2_HI_N, x);
+    r = fma_internal(kd, NEG_LN2_LO_N, r);
+    r += xtail;
 
     let idx = ((ki as usize) & ((N - 1) as usize)) << 1;
     let top = ki << (52 - EXP_TABLE_BITS);
@@ -417,7 +423,10 @@ pub(crate) fn exp_with_tail_generic(x: f64, xtail: f64) -> f64 {
     let scale = f64_from_bits(sbits);
 
     let r2 = r * r;
-    let tmp = tail + r + r2 * (EXP_C2 + r * EXP_C3) + r2 * r2 * (EXP_C4 + r * EXP_C5);
+    let p1 = fma_internal(r, EXP_C3, EXP_C2);
+    let p2 = fma_internal(r, EXP_C5, EXP_C4);
+    let tmp = fma_internal(r2, p1, tail + r);
+    let tmp = fma_internal(r2 * r2, p2, tmp);
     let k_adj = k + (1023 * N as i32);
     if (k_adj as u32) >= (2047 * N as u32) || (k_adj as u32) < (N as u32) {
         return specialcase(tmp, sbits, k as i64);

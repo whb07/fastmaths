@@ -108,6 +108,9 @@ fn as_atanh_zero(x: f64) -> f64 {
 pub fn atanh(x: f64) -> f64 {
     let ax = x.abs();
     let aix = (ax).to_bits();
+    if aix == 0 {
+        return x;
+    }
     if aix >= ONE_BITS {
         if aix == ONE_BITS {
             return if x.is_sign_negative() {
