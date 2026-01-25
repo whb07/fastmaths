@@ -2,7 +2,7 @@
 //!
 //! Algorithms are drawn from fdlibm/glibc/core-math with table-driven and
 //! bit-level implementations designed for no_std. This module provides
-//! runtime FMA selection and shared bit-manipulation helpers used across
+//! compile-time FMA selection and shared bit-manipulation helpers used across
 //! the math routines for tight error control.
 
 #![allow(non_camel_case_types)]
@@ -59,6 +59,7 @@ mod tanh;
 mod trig;
 mod utan_tables;
 mod utils;
+mod arch;
 
 pub use acos::acos;
 pub use acosh::acosh;
@@ -110,10 +111,14 @@ pub(crate) use utils::{
     LN2_HI, LN2_LO, PIO2_HI, PIO2_LO, SPLIT, TWO54, asdouble, fasttwosum, roundeven_finite, two_sum,
 };
 
+const HAS_FMA: bool = !cfg!(feature = "soft-fma")
+    && (cfg!(target_arch = "aarch64")
+        || cfg!(any(target_arch = "x86_64", target_arch = "x86")));
+
 // ========= bit helpers =========
 
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-use core::sync::atomic::{AtomicU8, Ordering};
+#[cfg(any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64"))]
+use arch::fma_hw;
 
 #[inline(always)]
 fn f64_from_bits(u: u64) -> f64 {
@@ -122,38 +127,6 @@ fn f64_from_bits(u: u64) -> f64 {
 #[inline(always)]
 fn f64_to_bits(x: f64) -> u64 {
     x.to_bits()
-}
-
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-#[target_feature(enable = "fma")]
-unsafe fn fma_hw(a: f64, b: f64, c: f64) -> f64 {
-    #[cfg(target_arch = "x86_64")]
-    {
-        use core::arch::x86_64::{_mm_cvtsd_f64, _mm_fmadd_sd, _mm_set_sd};
-        _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(a), _mm_set_sd(b), _mm_set_sd(c)))
-    }
-    #[cfg(target_arch = "x86")]
-    {
-        use core::arch::x86::{_mm_cvtsd_f64, _mm_fmadd_sd, _mm_set_sd};
-        _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(a), _mm_set_sd(b), _mm_set_sd(c)))
-    }
-}
-
-#[cfg(target_arch = "aarch64")]
-#[inline(always)]
-unsafe fn fma_hw(a: f64, b: f64, c: f64) -> f64 {
-    let out: f64;
-    unsafe {
-        core::arch::asm!(
-            "fmadd {out:d}, {a:d}, {b:d}, {c:d}",
-            out = out(vreg) out,
-            a = in(vreg) a,
-            b = in(vreg) b,
-            c = in(vreg) c,
-            options(pure, nomem, nostack)
-        );
-    }
-    out
 }
 
 #[inline(always)]
@@ -182,48 +155,19 @@ fn fma_soft(a: f64, b: f64, c: f64) -> f64 {
     s + t
 }
 
-#[cfg(target_arch = "aarch64")]
 #[inline(always)]
 fn fma_internal(a: f64, b: f64, c: f64) -> f64 {
-    // Safety: aarch64 always supports fused multiply-add.
-    unsafe { fma_hw(a, b, c) }
+    if HAS_FMA {
+        // Safety: compiled with FMA target feature or on aarch64.
+        unsafe { fma_hw(a, b, c) }
+    } else {
+        fma_soft(a, b, c)
+    }
 }
 
-#[cfg(not(target_arch = "aarch64"))]
 #[inline(always)]
-fn fma_internal(a: f64, b: f64, c: f64) -> f64 {
-    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-    {
-        if cpu_has_fma() {
-            // Safety: guarded by runtime feature detection.
-            return unsafe { fma_hw(a, b, c) };
-        }
-    }
-    fma_soft(a, b, c)
-}
-
-// Runtime CPU feature detection (no-std friendly).
-// Cached to avoid CPUID on every call (CPUID is very expensive and serializing).
-#[inline(always)]
-fn cpu_has_fma() -> bool {
-    #[cfg(target_arch = "x86_64")]
-    {
-        static HAS_FMA: AtomicU8 = AtomicU8::new(0); // 0=unknown, 1=no, 2=yes
-        match HAS_FMA.load(Ordering::Relaxed) {
-            1 => false,
-            2 => true,
-            _ => {
-                let r = unsafe { core::arch::x86_64::__cpuid(1) };
-                let has = (r.ecx & (1 << 12)) != 0;
-                HAS_FMA.store(if has { 2 } else { 1 }, Ordering::Relaxed);
-                has
-            }
-        }
-    }
-    #[cfg(not(target_arch = "x86_64"))]
-    {
-        false
-    }
+fn fma_available() -> bool {
+    HAS_FMA
 }
 
 #[inline(always)]

@@ -24,7 +24,7 @@ fn fma_opt<const USE_FMA: bool>(a: f64, b: f64, c: f64) -> f64 {
     if USE_FMA {
         #[cfg(target_arch = "x86_64")]
         {
-            // SAFETY: caller guards via CPUID and target_feature.
+            // SAFETY: caller guards via compile-time FMA availability and target_feature.
             return unsafe { fma_f64(a, b, c) };
         }
     }
@@ -228,8 +228,8 @@ fn tan_generic(x: f64) -> f64 {
 #[inline(always)]
 pub fn tan(x: f64) -> f64 {
     #[cfg(target_arch = "x86_64")]
-    if super::cpu_has_fma() {
-        // SAFETY: guarded by CPUID.
+    if super::fma_available() {
+        // SAFETY: guarded by compile-time FMA availability.
         return unsafe { tan_fma(x) };
     }
     tan_generic(x)

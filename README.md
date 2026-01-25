@@ -83,7 +83,7 @@ To run the full suite of benchmarks:
 cargo bench
 ```
 
-*Note: For maximum performance, compile with `RUSTFLAGS="-C target-cpu=native"` to enable hardware-specific optimizations like FMA and SSE2 instructions. For glibc comparisons, point the benches at a locally-built `libm` via `FASTMATHS_GLIBC_LIBM` or use `./build_libm.sh`.*
+*Note: For maximum performance, compile with `RUSTFLAGS="-C target-cpu=native"` to enable hardware-specific optimizations like FMA and SSE2 instructions. fastmaths now **assumes FMA on x86/x86_64 by default** (compile-time) and provides a `soft-fma` feature to force software FMA paths for deterministic or legacy compatibility. For glibc comparisons, point the benches at a locally-built `libm` via `FASTMATHS_GLIBC_LIBM` or use `./build_libm.sh`.*
 
 ## Usage
 

@@ -923,7 +923,7 @@ unsafe fn sin_fma(x: f64) -> f64 {
 pub(super) fn sin(x: f64) -> f64 {
     #[cfg(target_arch = "x86_64")]
     unsafe {
-        if super::cpu_has_fma() {
+        if super::fma_available() {
             return sin_fma(x);
         }
     }
@@ -987,7 +987,7 @@ unsafe fn cos_fma(x: f64) -> f64 {
 pub(super) fn cos(x: f64) -> f64 {
     #[cfg(target_arch = "x86_64")]
     unsafe {
-        if super::cpu_has_fma() {
+        if super::fma_available() {
             return cos_fma(x);
         }
     }
@@ -1069,7 +1069,7 @@ unsafe fn sincos_fma(x: f64) -> (f64, f64) {
 pub fn sincos(x: f64) -> (f64, f64) {
     #[cfg(target_arch = "x86_64")]
     unsafe {
-        if super::cpu_has_fma() {
+        if super::fma_available() {
             return sincos_fma(x);
         }
     }

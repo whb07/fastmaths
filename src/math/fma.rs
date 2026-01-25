@@ -1,6 +1,6 @@
 //! Fused multiply-add helper.
 //!
-//! Uses runtime CPU feature detection to select hardware FMA where available.
+//! Uses compile-time FMA selection to select hardware FMA where available.
 //! Falls back to a software-fused path using Dekker splitting (2^27+1) to
 //! track the product error and preserve correct rounding without libm.
 
@@ -33,8 +33,8 @@ unsafe fn fma_f64(a: f64, b: f64, c: f64) -> f64 {
 #[inline(always)]
 pub fn fma(a: f64, b: f64, c: f64) -> f64 {
     #[cfg(target_arch = "x86_64")]
-    if super::cpu_has_fma() {
-        // SAFETY: guarded by CPUID.
+    if super::fma_available() {
+        // SAFETY: guarded by compile-time FMA availability.
         return unsafe { fma_f64(a, b, c) };
     }
     if a.is_infinite() || b.is_infinite() {
