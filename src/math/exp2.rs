@@ -231,8 +231,8 @@ unsafe fn exp2_with_tail_fma(x: f64, xtail: f64) -> f64 {
 #[inline]
 pub fn exp2(x: f64) -> f64 {
     #[cfg(target_arch = "x86_64")]
-    if super::cpu_has_fma() {
-        // SAFETY: guarded by CPUID.
+    if super::fma_available() {
+        // SAFETY: guarded by compile-time FMA availability.
         return unsafe { exp2_fma(x) };
     }
     exp2_generic(x)
@@ -241,8 +241,8 @@ pub fn exp2(x: f64) -> f64 {
 #[inline]
 pub(crate) fn exp2_with_tail(x: f64, xtail: f64) -> f64 {
     #[cfg(target_arch = "x86_64")]
-    if super::cpu_has_fma() {
-        // SAFETY: guarded by CPUID.
+    if super::fma_available() {
+        // SAFETY: guarded by compile-time FMA availability.
         return unsafe { exp2_with_tail_fma(x, xtail) };
     }
     exp2_with_tail_generic(x, xtail)

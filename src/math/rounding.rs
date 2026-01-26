@@ -114,7 +114,7 @@ fn clamp_i64(x: f64) -> i64 {
         if x < i64::MIN as f64 {
             return i64::MIN;
         }
-        return x as i64;
+        x as i64
     }
     #[cfg(not(any(target_arch = "aarch64", target_arch = "arm")))]
     {

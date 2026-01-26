@@ -3,7 +3,7 @@
 //! Scales inputs to avoid overflow/underflow, orders by magnitude, then computes
 //! sqrt(x^2+y^2) with guarded squaring. This follows fdlibm-style stable formulas.
 
-use super::{cpu_has_fma, fma_internal, sqrt};
+use super::{fma_available, fma_internal, sqrt};
 
 const SCALE: f64 = f64::from_bits(0x1a70_0000_0000_0000); // 2^-600
 const LARGE_VAL: f64 = f64::from_bits(0x5fe0_0000_0000_0000); // 2^511
@@ -12,7 +12,7 @@ const EPS: f64 = f64::from_bits(0x3c90_0000_0000_0000); // 2^-54
 
 #[inline(always)]
 fn kernel(ax: f64, ay: f64) -> f64 {
-    if cpu_has_fma() {
+    if fma_available() {
         let t1 = ay + ay;
         let t2 = ax - ay;
         if t1 >= ax {

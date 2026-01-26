@@ -235,8 +235,8 @@ unsafe fn expm1_fma(mut x: f64) -> f64 {
 #[inline(always)]
 pub fn expm1(x: f64) -> f64 {
     #[cfg(target_arch = "x86_64")]
-    if super::cpu_has_fma() {
-        // SAFETY: guarded by CPUID.
+    if super::fma_available() {
+        // SAFETY: guarded by compile-time FMA availability.
         return unsafe { expm1_fma(x) };
     }
     expm1_generic(x)

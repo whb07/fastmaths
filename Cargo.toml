@@ -8,6 +8,7 @@ rug = { version = "1.24", optional = true, default-features = true }
 
 [features]
 mpfr = ["rug"]
+soft-fma = []
 
 [dev-dependencies]
 criterion = "0.5"
