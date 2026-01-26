@@ -19,7 +19,6 @@ fn bench_sinh(c: &mut Criterion) {
     let mut group = c.benchmark_group("sinh/wide");
     bench_inputs(&mut group, &wide, fastmaths::sinh, glibc_sinh);
     group.finish();
-
 }
 
 fn main() {

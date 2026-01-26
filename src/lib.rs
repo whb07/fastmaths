@@ -234,7 +234,11 @@ mod tests {
                 return 0;
             }
             if x.is_infinite() {
-                return if x.is_sign_negative() { i64::MIN } else { i64::MAX };
+                return if x.is_sign_negative() {
+                    i64::MIN
+                } else {
+                    i64::MAX
+                };
             }
             if x > i64::MAX as f64 {
                 return i64::MAX;
@@ -2862,10 +2866,7 @@ mod tests {
     #[test]
     fn sinh_regression_medium_range() {
         // MPFR proptest regressions in the 1<=|x|<22 path.
-        for &x in &[
-            1.408992436517082_f64,
-            2.0854509241613868_f64,
-        ] {
+        for &x in &[1.408992436517082_f64, 2.0854509241613868_f64] {
             let actual = fastmaths::sinh(x);
             let expected = sinh_reference(x);
             assert_ulp_eq(
