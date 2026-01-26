@@ -54,36 +54,14 @@ Recent precision improvements:
 
 ## Performance
 
-`fastmaths` is designed to be faster than the system `glibc` implementation. Recent benchmarks (x86_64, January 23, 2026) show significant improvements:
-
-- **`atan`**: ~36% speedup vs glibc
-- **`atan2`**: ~62% speedup vs glibc
-- **`cbrt`**: ~18% speedup vs glibc
-- **`cos`**: ~37% speedup vs glibc
-
-Latest hyperbolic benchmarks (fastmaths vs glibc, median times):
-
-- **`sinh`**:
-  - smoke: 158.09 ns vs 182.90 ns
-  - common: 22.222 µs vs 24.247 µs
-  - wide: 23.304 µs vs 24.723 µs
-- **`asinh`**:
-  - smoke: 153.52 ns vs 198.59 ns
-  - common: 18.756 µs vs 28.486 µs
-  - wide: 16.611 µs vs 28.949 µs
-- **`acosh`**:
-  - smoke: 139.62 ns vs 154.52 ns
-  - common: 16.932 µs vs 26.286 µs
-  - wide: 15.795 µs vs 17.302 µs
-
-Across the current benchmark suite (84 groups, see `latest_bench_foo.txt`), fastmaths outperforms glibc in every group.
+`fastmaths` is designed to be faster than the system `glibc` implementation. Benchmark results are machine- and toolchain-dependent, so run them locally for current numbers.
 
 To run the full suite of benchmarks:
 ```bash
 cargo bench
 ```
 
-*Note: For maximum performance, compile with `RUSTFLAGS="-C target-cpu=native"` to enable hardware-specific optimizations like FMA and SSE2 instructions. fastmaths now **assumes FMA on x86/x86_64 by default** (compile-time) and provides a `soft-fma` feature to force software FMA paths for deterministic or legacy compatibility. For glibc comparisons, point the benches at a locally-built `libm` via `FASTMATHS_GLIBC_LIBM` or use `./build_libm.sh`.*
+*Note: For maximum performance, compile with `RUSTFLAGS="-C target-cpu=native"` to enable hardware-specific optimizations like FMA and SSE2 instructions. On x86/x86_64, fastmaths **assumes FMA at compile-time** unless the `soft-fma` feature is enabled (use it for deterministic builds or legacy CPUs). For glibc comparisons, point the benches at a locally-built `libm` via `FASTMATHS_GLIBC_LIBM` or use `./build_libm.sh`.*
 
 ## Usage
 
